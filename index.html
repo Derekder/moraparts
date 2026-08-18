@@ -225,6 +225,13 @@
     color:#fff; font-size:2.6rem; position:relative;
   }
   .card-img .ph-label{ font-family: var(--font-body); font-size:0.62rem; color: var(--gris); text-transform:uppercase; letter-spacing:0.08em; }
+  .agotado-badge{
+    position:absolute; top:10px; right:10px; background: #c23a3a; color:#fff;
+    font-family: var(--font-body); font-size:0.68rem; font-weight:700; text-transform:uppercase;
+    letter-spacing:0.05em; padding:4px 10px; border-radius:999px;
+  }
+  .add-btn:disabled{ background:#c7cedb; color:#6b7d95; cursor:not-allowed; }
+  .add-btn:disabled:hover{ background:#c7cedb; }
   .card-body{ padding:14px 14px 16px; display:flex; flex-direction:column; gap:6px; flex:1; }
   .card-tag{ font-size:0.7rem; font-weight:700; color: var(--azul); text-transform:uppercase; letter-spacing:0.05em; }
   .card-name{ font-family: var(--font-display); font-weight:600; font-size:1.08rem; color: var(--marino); line-height:1.15; }
@@ -432,41 +439,43 @@
    PRODUCTOS — editá aquí para agregar, quitar o cambiar precios.
    Cada producto necesita: id (único), nombre, categoria, moto,
    colores (lista de colores disponibles, o [] si no aplica),
-   precio (número, sin puntos ni comas), icono (un emoji cualquiera).
+   precio (número, sin puntos ni comas), stock (unidades disponibles),
+   icono (un emoji cualquiera).
    Si un producto tiene 2 o más colores, en la página aparecen
    como círculos para que el cliente elija antes de agregarlo.
+   Tip: en vez de editar esto a mano, usá admin.html (el panel).
    ========================================================= */
 const productos = [
-  {id:1, nombre:"Manilla", categoria:"Manillas", icono:"🏍️", moto:"CRF 250", colores:["Rojo","Negro"], precio:18000},
-  {id:2, nombre:"Manilla", categoria:"Manillas", icono:"🏍️", moto:"XR 150", colores:["Rojo"], precio:16000},
-  {id:3, nombre:"Manilla", categoria:"Manillas", icono:"🏍️", moto:"Tornado 300", colores:["Negro"], precio:19000},
+  {id:1, nombre:"Manilla", categoria:"Manillas", icono:"🏍️", moto:"CRF 250", colores:["Rojo","Negro"], precio:18000, stock:8},
+  {id:2, nombre:"Manilla", categoria:"Manillas", icono:"🏍️", moto:"XR 150", colores:["Rojo"], precio:16000, stock:6},
+  {id:3, nombre:"Manilla", categoria:"Manillas", icono:"🏍️", moto:"Tornado 300", colores:["Negro"], precio:19000, stock:5},
 
-  {id:4, nombre:"Cobertor de Motor", categoria:"Cobertores de Motor", icono:"🛡️", moto:"CRF 300", colores:["Negro"], precio:25000},
-  {id:5, nombre:"Cobertor de Motor", categoria:"Cobertores de Motor", icono:"🛡️", moto:"XR 190", colores:["Negro"], precio:24000},
-  {id:6, nombre:"Cobertor de Motor", categoria:"Cobertores de Motor", icono:"🛡️", moto:"Tornado 300", colores:["Rojo"], precio:26000},
+  {id:4, nombre:"Cobertor de Motor", categoria:"Cobertores de Motor", icono:"🛡️", moto:"CRF 300", colores:["Negro"], precio:25000, stock:4},
+  {id:5, nombre:"Cobertor de Motor", categoria:"Cobertores de Motor", icono:"🛡️", moto:"XR 190", colores:["Negro"], precio:24000, stock:4},
+  {id:6, nombre:"Cobertor de Motor", categoria:"Cobertores de Motor", icono:"🛡️", moto:"Tornado 300", colores:["Rojo"], precio:26000, stock:3},
 
-  {id:7, nombre:"Horquilla Delantera", categoria:"Horquilla / Suspensión", icono:"🔧", moto:"CRF 250", colores:[], precio:65000},
-  {id:8, nombre:"Horquilla Delantera", categoria:"Horquilla / Suspensión", icono:"🔧", moto:"XR 150", colores:[], precio:60000},
+  {id:7, nombre:"Horquilla Delantera", categoria:"Horquilla / Suspensión", icono:"🔧", moto:"CRF 250", colores:[], precio:65000, stock:2},
+  {id:8, nombre:"Horquilla Delantera", categoria:"Horquilla / Suspensión", icono:"🔧", moto:"XR 150", colores:[], precio:60000, stock:2},
 
-  {id:9, nombre:"Puños", categoria:"Puños", icono:"🖐️", moto:"Universal", colores:["Negro","Rojo"], precio:8000},
+  {id:9, nombre:"Puños", categoria:"Puños", icono:"🖐️", moto:"Universal", colores:["Negro","Rojo"], precio:8000, stock:15},
 
-  {id:10, nombre:"Cubre Disco", categoria:"Cubre Discos", icono:"⚙️", moto:"CRF 300", colores:["Naranja"], precio:12000},
-  {id:11, nombre:"Cubre Disco", categoria:"Cubre Discos", icono:"⚙️", moto:"XR 190", colores:["Negro"], precio:12000},
+  {id:10, nombre:"Cubre Disco", categoria:"Cubre Discos", icono:"⚙️", moto:"CRF 300", colores:["Naranja"], precio:12000, stock:6},
+  {id:11, nombre:"Cubre Disco", categoria:"Cubre Discos", icono:"⚙️", moto:"XR 190", colores:["Negro"], precio:12000, stock:6},
 
-  {id:12, nombre:"Guía de Cadena", categoria:"Guía de Cadena", icono:"🔗", moto:"CRF 250", colores:["Negro"], precio:9500},
-  {id:13, nombre:"Guía de Cadena", categoria:"Guía de Cadena", icono:"🔗", moto:"Tornado 300", colores:["Negro"], precio:9500},
+  {id:12, nombre:"Guía de Cadena", categoria:"Guía de Cadena", icono:"🔗", moto:"CRF 250", colores:["Negro"], precio:9500, stock:10},
+  {id:13, nombre:"Guía de Cadena", categoria:"Guía de Cadena", icono:"🔗", moto:"Tornado 300", colores:["Negro"], precio:9500, stock:10},
 
-  {id:14, nombre:"Tapa de Bomba/Reservorio", categoria:"Tapas de Bomba", icono:"🛢️", moto:"CRF 300", colores:["Azul"], precio:7000},
-  {id:15, nombre:"Tapa de Bomba/Reservorio", categoria:"Tapas de Bomba", icono:"🛢️", moto:"XR 190", colores:["Naranja"], precio:7000},
+  {id:14, nombre:"Tapa de Bomba/Reservorio", categoria:"Tapas de Bomba", icono:"🛢️", moto:"CRF 300", colores:["Azul"], precio:7000, stock:9},
+  {id:15, nombre:"Tapa de Bomba/Reservorio", categoria:"Tapas de Bomba", icono:"🛢️", moto:"XR 190", colores:["Naranja"], precio:7000, stock:9},
 
-  {id:16, nombre:"Manivela", categoria:"Manivelas", icono:"🔩", moto:"CRF 250", colores:[], precio:15000},
-  {id:17, nombre:"Manivela", categoria:"Manivelas", icono:"🔩", moto:"XR 150", colores:[], precio:15000},
+  {id:16, nombre:"Manivela", categoria:"Manivelas", icono:"🔩", moto:"CRF 250", colores:[], precio:15000, stock:5},
+  {id:17, nombre:"Manivela", categoria:"Manivelas", icono:"🔩", moto:"XR 150", colores:[], precio:15000, stock:5},
 
-  {id:18, nombre:"Casco Integral", categoria:"Cascos", icono:"🪖", moto:"Universal", colores:["Negro","Rojo","Azul"], precio:45000},
+  {id:18, nombre:"Casco Integral", categoria:"Cascos", icono:"🪖", moto:"Universal", colores:["Negro","Rojo","Azul"], precio:45000, stock:7},
 
-  {id:19, nombre:"Funda de Asiento", categoria:"Fundas de Asiento", icono:"💺", moto:"CRF 250", colores:["Negro"], precio:14000},
-  {id:20, nombre:"Funda de Asiento", categoria:"Fundas de Asiento", icono:"💺", moto:"XR 150", colores:["Negro"], precio:14000},
-  {id:21, nombre:"Funda de Asiento", categoria:"Fundas de Asiento", icono:"💺", moto:"Tornado 300", colores:["Negro"], precio:14000},
+  {id:19, nombre:"Funda de Asiento", categoria:"Fundas de Asiento", icono:"💺", moto:"CRF 250", colores:["Negro"], precio:14000, stock:8},
+  {id:20, nombre:"Funda de Asiento", categoria:"Fundas de Asiento", icono:"💺", moto:"XR 150", colores:["Negro"], precio:14000, stock:8},
+  {id:21, nombre:"Funda de Asiento", categoria:"Fundas de Asiento", icono:"💺", moto:"Tornado 300", colores:["Negro"], precio:14000, stock:8},
 ];
 
 // Colores disponibles para los círculos de selección — agregá más si lo necesitás
@@ -534,11 +543,13 @@ function renderCatalog(){
           const multiColor = p.colores && p.colores.length>1;
           const singleColor = p.colores && p.colores.length===1;
           const activeColor = multiColor ? selectedColors[p.id] : (singleColor ? p.colores[0] : null);
+          const agotado = (p.stock !== undefined) && p.stock<=0;
           return `
           <div class="card">
             <div class="card-img">
               <span>${p.icono}</span>
               <span class="ph-label">Foto pendiente</span>
+              ${agotado ? '<span class="agotado-badge">Agotado</span>' : ''}
             </div>
             <div class="card-body">
               <div class="card-tag">${p.moto}</div>
@@ -550,7 +561,7 @@ function renderCatalog(){
               ` : (singleColor ? `<div class="card-color">Color: ${activeColor}</div>` : '')}
               <div class="card-bottom">
                 <div class="card-price">${money(p.precio)}</div>
-                <button class="add-btn" data-id="${p.id}">Agregar</button>
+                <button class="add-btn" data-id="${p.id}" ${agotado ? 'disabled' : ''}>${agotado ? 'Agotado' : 'Agregar'}</button>
               </div>
             </div>
           </div>
