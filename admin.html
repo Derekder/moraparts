@@ -354,6 +354,10 @@ function parseFile(text){
   productos.forEach(p=>{
     if(p.stock === undefined) p.stock = 0;
     if(!Array.isArray(p.colores)) p.colores = [];
+    if(!Array.isArray(p.motos)){
+      p.motos = p.moto ? [p.moto] : [];
+      delete p.moto;
+    }
   });
 }
 
@@ -386,7 +390,7 @@ function renderProductosTable(){
     return `
     <tr class="${(low || out) && !editing ? 'low-stock' : ''}" data-id="${p.id}">
       <td>${p.nombre} <span style="color:#9aa4b2; font-size:0.78rem;">(${p.categoria})</span></td>
-      <td>${p.moto}</td>
+      <td>${(p.motos||[]).join(', ')}</td>
       <td>${(p.colores && p.colores.length) ? p.colores.join(', ') : '—'}</td>
       <td>${precioCell}</td>
       <td>${stockCell}</td>
@@ -469,13 +473,13 @@ function renderVentaSelectors(){
   const sel = document.getElementById('ventaProducto');
   const q = normalize(document.getElementById('ventaBuscar').value);
   const filtrados = q
-    ? productos.filter(p => normalize(`${p.nombre} ${p.categoria} ${p.moto}`).includes(q))
+    ? productos.filter(p => normalize(`${p.nombre} ${p.categoria} ${(p.motos||[]).join(' ')}`).includes(q))
     : productos;
 
   if(filtrados.length===0){
     sel.innerHTML = `<option value="">Sin resultados</option>`;
   } else {
-    sel.innerHTML = filtrados.map(p=>`<option value="${p.id}">${p.nombre} — ${p.moto} (stock: ${p.stock})</option>`).join('');
+    sel.innerHTML = filtrados.map(p=>`<option value="${p.id}">${p.nombre} — ${(p.motos||[]).join(', ')} (stock: ${p.stock})</option>`).join('');
   }
   updateColorSelector();
 }
@@ -504,7 +508,7 @@ function updateColorSelector(){
     if(p.stock <= 0){
       registrarBtn.disabled = true;
       registrarBtn.textContent = 'Sin stock disponible';
-      showVentaError(`"${p.nombre} — ${p.moto}" está agotado. Actualizá el stock antes de registrar una venta.`);
+      showVentaError(`"${p.nombre} — ${(p.motos||[]).join(', ')}" está agotado. Actualizá el stock antes de registrar una venta.`);
     } else {
       registrarBtn.disabled = false;
       registrarBtn.textContent = 'Registrar venta';
@@ -545,12 +549,12 @@ document.getElementById('registrarVentaBtn').addEventListener('click', ()=>{
     return;
   }
   if(p.stock <= 0){
-    showVentaError(`"${p.nombre} — ${p.moto}" está agotado. No se puede registrar esta venta.`);
+    showVentaError(`"${p.nombre} — ${(p.motos||[]).join(', ')}" está agotado. No se puede registrar esta venta.`);
     cantidadInput.classList.add('input-invalid');
     return;
   }
   if(cantidad > p.stock){
-    showVentaError(`Solo quedan ${p.stock} unidad(es) de "${p.nombre} — ${p.moto}" en stock. No podés vender ${cantidad}.`);
+    showVentaError(`Solo quedan ${p.stock} unidad(es) de "${p.nombre} — ${(p.motos||[]).join(', ')}" en stock. No podés vender ${cantidad}.`);
     cantidadInput.classList.add('input-invalid');
     return;
   }
@@ -559,7 +563,7 @@ document.getElementById('registrarVentaBtn').addEventListener('click', ()=>{
     fecha: new Date().toISOString(),
     productoId: id,
     nombre: p.nombre,
-    moto: p.moto,
+    motos: p.motos,
     color: color || null,
     cantidad,
     precioUnitario: p.precio,
@@ -596,7 +600,7 @@ function renderVentasTable(){
       const fecha = new Date(v.fecha).toLocaleDateString('es-CR', {day:'2-digit', month:'2-digit', year:'2-digit'});
       return `<tr>
         <td>${fecha}</td>
-        <td>${v.nombre} — ${v.moto}</td>
+        <td>${v.nombre} — ${(v.motos||[]).join(', ')}</td>
         <td>${v.color || '—'}</td>
         <td>${v.cantidad}</td>
         <td>${money(v.subtotal)}</td>
@@ -656,7 +660,7 @@ async function generarExcel(rows, filename, titulo){
     const row = sheet.addRow([
       new Date(v.fecha).toLocaleDateString('es-CR'),
       v.nombre,
-      v.moto,
+      (v.motos||[]).join('/'),
       v.color || '—',
       v.cantidad,
       v.precioUnitario,
