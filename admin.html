@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panel de Administración — Mora Part's CR</title>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
   :root{
     --azul:#0A66FF; --azul-oscuro:#084ec2; --marino:#071A34; --marino-2:#0C2748;
@@ -63,6 +64,13 @@
   tr.low-stock td{ background:#fff6ee; }
   .badge-low{ background:#ffb020; color:#3a2a00; font-size:0.68rem; font-weight:700; padding:2px 8px; border-radius:999px; margin-left:6px; }
   .badge-out{ background:#c23a3a; color:#fff; font-size:0.68rem; font-weight:700; padding:2px 8px; border-radius:999px; margin-left:6px; }
+  .row-btn{ font-size:0.78rem; font-weight:700; padding:6px 12px; border-radius:6px; margin-right:6px; white-space:nowrap; }
+  .row-edit{ background:#eef1f7; color:var(--marino); }
+  .row-edit:hover{ background:var(--azul); color:#fff; }
+  .row-save{ background:var(--azul); color:#fff; }
+  .row-save:hover{ background:var(--azul-oscuro); }
+  .row-cancel{ background:transparent; color:var(--gris); }
+  .row-cancel:hover{ color:#c23a3a; }
 
   .actions-row{ margin-top:20px; display:flex; gap:12px; flex-wrap:wrap; }
   .btn{ font-family:var(--font-display); font-weight:700; padding:12px 22px; border-radius:8px; font-size:0.92rem; }
@@ -79,6 +87,10 @@
   .sale-form label{ font-size:0.75rem; color:var(--gris); font-weight:600; display:block; margin-bottom:5px; text-transform:uppercase; letter-spacing:0.04em; }
   .sale-form select, .sale-form input{ width:100%; padding:10px 12px; border:1px solid #dde3ec; border-radius:8px; font-size:0.9rem; }
   .sale-form button{ background:var(--azul); color:#fff; font-weight:700; padding:11px 18px; border-radius:8px; height:42px; }
+
+  .venta-search{ display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid #dde3ec; border-radius:8px; padding:10px 14px; margin-bottom:12px; color:var(--gris); }
+  .venta-search:focus-within{ border-color:var(--azul); }
+  .venta-search input{ flex:1; border:none; outline:none; font-size:0.9rem; color:var(--negro); }
 
   .summary-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:22px; }
   @media (max-width:700px){ .summary-row{ grid-template-columns:1fr; } }
@@ -136,7 +148,7 @@
         </div>
 
         <table>
-          <thead><tr><th>Producto</th><th>Moto</th><th>Colores</th><th>Precio (₡)</th><th>Stock</th></tr></thead>
+          <thead><tr><th>Producto</th><th>Moto</th><th>Colores</th><th>Precio (₡)</th><th>Stock</th><th></th></tr></thead>
           <tbody id="productosTable"></tbody>
         </table>
 
@@ -153,6 +165,10 @@
       <div id="ventasNeedFile" class="empty-msg">Primero subí tu <strong>index.html</strong> en la pestaña "Productos y precios" para poder registrar ventas.</div>
 
       <div id="ventasArea" style="display:none;">
+        <div class="venta-search">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="ventaBuscar" placeholder="Buscar producto por nombre, moto o categoría...">
+        </div>
         <div class="sale-form">
           <div>
             <label>Producto</label>
@@ -182,8 +198,8 @@
         <div id="ventasEmpty" class="empty-msg" style="display:none;">Todavía no registraste ninguna venta.</div>
 
         <div class="actions-row">
-          <button class="btn btn-secondary" id="exportSemanaBtn">⬇ Descargar Excel de esta semana (.csv)</button>
-          <button class="btn btn-outline" id="exportTodoBtn">⬇ Descargar historial completo (.csv)</button>
+          <button class="btn btn-secondary" id="exportSemanaBtn">⬇ Descargar Excel de esta semana (.xlsx)</button>
+          <button class="btn btn-outline" id="exportTodoBtn">⬇ Descargar historial completo (.xlsx)</button>
           <button class="btn btn-outline" id="borrarVentasBtn">🗑 Borrar historial de ventas</button>
         </div>
         <p class="note">Registrá acá cada venta que confirmés por WhatsApp. El stock del producto se descuenta automáticamente — recordá descargar el index.html actualizado después.</p>
@@ -296,36 +312,60 @@ function rebuildFileText(){
 }
 
 /* ---------- PRODUCTOS TABLE ---------- */
+const editingIds = new Set();
+
 function renderProductosTable(){
   const tbody = document.getElementById('productosTable');
   tbody.innerHTML = productos.map(p=>{
     const low = p.stock > 0 && p.stock <= 3;
     const out = p.stock <= 0;
+    const editing = editingIds.has(p.id);
+
+    const precioCell = editing
+      ? `<input type="number" class="precio-input" data-id="${p.id}" value="${p.precio}" min="0">`
+      : money(p.precio);
+
+    const stockCell = editing
+      ? `<input type="number" class="stock-input" data-id="${p.id}" value="${p.stock}" min="0">`
+      : `${p.stock} ${out ? '<span class="badge-out">Agotado</span>' : (low ? '<span class="badge-low">Bajo</span>' : '')}`;
+
+    const actionCell = editing
+      ? `<button class="row-btn row-save" data-id="${p.id}">Guardar cambio</button><button class="row-btn row-cancel" data-id="${p.id}">Cancelar</button>`
+      : `<button class="row-btn row-edit" data-id="${p.id}">Editar</button>`;
+
     return `
-    <tr class="${low || out ? 'low-stock' : ''}" data-id="${p.id}">
+    <tr class="${(low || out) && !editing ? 'low-stock' : ''}" data-id="${p.id}">
       <td>${p.nombre} <span style="color:#9aa4b2; font-size:0.78rem;">(${p.categoria})</span></td>
       <td>${p.moto}</td>
       <td>${(p.colores && p.colores.length) ? p.colores.join(', ') : '—'}</td>
-      <td><input type="number" class="precio-input" data-id="${p.id}" value="${p.precio}" min="0"></td>
-      <td>
-        <input type="number" class="stock-input" data-id="${p.id}" value="${p.stock}" min="0">
-        ${out ? '<span class="badge-out">Agotado</span>' : (low ? '<span class="badge-low">Bajo</span>' : '')}
-      </td>
+      <td>${precioCell}</td>
+      <td>${stockCell}</td>
+      <td>${actionCell}</td>
     </tr>`;
   }).join('');
 
-  tbody.querySelectorAll('.precio-input').forEach(inp=>{
-    inp.addEventListener('input', ()=>{
-      const p = productos.find(pp=>pp.id===Number(inp.dataset.id));
-      p.precio = Number(inp.value) || 0;
-      updateStats();
+  tbody.querySelectorAll('.row-edit').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      editingIds.add(Number(btn.dataset.id));
+      renderProductosTable();
     });
   });
-  tbody.querySelectorAll('.stock-input').forEach(inp=>{
-    inp.addEventListener('input', ()=>{
-      const p = productos.find(pp=>pp.id===Number(inp.dataset.id));
-      p.stock = Number(inp.value) || 0;
-      updateStats();
+  tbody.querySelectorAll('.row-cancel').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      editingIds.delete(Number(btn.dataset.id));
+      renderProductosTable();
+    });
+  });
+  tbody.querySelectorAll('.row-save').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = Number(btn.dataset.id);
+      const row = btn.closest('tr');
+      const precioInput = row.querySelector('.precio-input');
+      const stockInput = row.querySelector('.stock-input');
+      const p = productos.find(pp=>pp.id===id);
+      p.precio = Number(precioInput.value) || 0;
+      p.stock = Number(stockInput.value) || 0;
+      editingIds.delete(id);
       renderProductosTable();
       renderVentaSelectors();
     });
@@ -353,12 +393,24 @@ document.getElementById('downloadBtn').addEventListener('click', ()=>{
 });
 
 /* ---------- VENTAS ---------- */
+function normalize(s){ return (s||"").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+
 function renderVentaSelectors(){
   const sel = document.getElementById('ventaProducto');
-  sel.innerHTML = productos.map(p=>`<option value="${p.id}">${p.nombre} — ${p.moto} (stock: ${p.stock})</option>`).join('');
+  const q = normalize(document.getElementById('ventaBuscar').value);
+  const filtrados = q
+    ? productos.filter(p => normalize(`${p.nombre} ${p.categoria} ${p.moto}`).includes(q))
+    : productos;
+
+  if(filtrados.length===0){
+    sel.innerHTML = `<option value="">Sin resultados</option>`;
+  } else {
+    sel.innerHTML = filtrados.map(p=>`<option value="${p.id}">${p.nombre} — ${p.moto} (stock: ${p.stock})</option>`).join('');
+  }
   updateColorSelector();
 }
 document.getElementById('ventaProducto').addEventListener('change', updateColorSelector);
+document.getElementById('ventaBuscar').addEventListener('input', renderVentaSelectors);
 
 function updateColorSelector(){
   const id = Number(document.getElementById('ventaProducto').value);
@@ -444,21 +496,74 @@ function renderVentasTable(){
   document.getElementById('sumTicket').textContent = semana.length;
 }
 
-function toCSV(rows){
-  const header = ['Fecha','Producto','Moto','Color','Cantidad','Precio Unitario','Subtotal'];
-  const lines = [header.join(',')];
-  rows.forEach(v=>{
-    const fecha = new Date(v.fecha).toLocaleDateString('es-CR');
-    const linea = [fecha, `"${v.nombre}"`, `"${v.moto}"`, `"${v.color||''}"`, v.cantidad, v.precioUnitario, v.subtotal];
-    lines.push(linea.join(','));
-  });
-  const total = rows.reduce((s,v)=>s+v.subtotal,0);
-  lines.push(['','','','','','TOTAL', total].join(','));
-  return lines.join('\n');
-}
+async function generarExcel(rows, filename, titulo){
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Mora Part's CR";
+  workbook.created = new Date();
 
-function downloadCSV(content, filename){
-  const blob = new Blob(["\uFEFF" + content], {type:'text/csv;charset=utf-8;'});
+  const sheet = workbook.addWorksheet('Ventas', {
+    views: [{ state:'frozen', ySplit: 3 }]
+  });
+
+  sheet.mergeCells('A1:G1');
+  const titleCell = sheet.getCell('A1');
+  titleCell.value = titulo;
+  titleCell.font = { name:'Calibri', size:14, bold:true, color:{argb:'FFFFFFFF'} };
+  titleCell.alignment = { vertical:'middle', horizontal:'left' };
+  titleCell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF071A34'} };
+  sheet.getRow(1).height = 26;
+
+  sheet.mergeCells('A2:G2');
+  const subCell = sheet.getCell('A2');
+  subCell.value = `Generado el ${new Date().toLocaleDateString('es-CR')} — Mora Part's CR`;
+  subCell.font = { size:9, italic:true, color:{argb:'FF6B7D95'} };
+  sheet.getRow(2).height = 16;
+
+  const headers = ['Fecha','Producto','Moto','Color','Cantidad','Precio Unitario','Subtotal'];
+  const headerRow = sheet.getRow(3);
+  headerRow.values = headers;
+  headerRow.eachCell(cell=>{
+    cell.font = { bold:true, color:{argb:'FFFFFFFF'} };
+    cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FF0A66FF'} };
+    cell.alignment = { vertical:'middle', horizontal:'center' };
+    cell.border = { bottom:{style:'thin', color:{argb:'FFDDE3EC'}} };
+  });
+  headerRow.height = 20;
+
+  rows.forEach((v, idx)=>{
+    const row = sheet.addRow([
+      new Date(v.fecha).toLocaleDateString('es-CR'),
+      v.nombre,
+      v.moto,
+      v.color || '—',
+      v.cantidad,
+      v.precioUnitario,
+      v.subtotal
+    ]);
+    row.eachCell((cell, colNumber)=>{
+      cell.alignment = { vertical:'middle', horizontal: colNumber>=5 ? 'center' : 'left' };
+      if(idx % 2 === 0){
+        cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFF5F7FB'} };
+      }
+    });
+    row.getCell(6).numFmt = '"₡"#,##0';
+    row.getCell(7).numFmt = '"₡"#,##0';
+  });
+
+  const total = rows.reduce((s,v)=>s+v.subtotal,0);
+  const totalRow = sheet.addRow(['','','','','','TOTAL', total]);
+  totalRow.eachCell(cell=>{
+    cell.font = { bold:true, color:{argb:'FFFFFFFF'} };
+    cell.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFF6A1A'} };
+  });
+  totalRow.getCell(7).numFmt = '"₡"#,##0';
+
+  sheet.columns = [
+    { width:13 }, { width:26 }, { width:16 }, { width:12 }, { width:11 }, { width:16 }, { width:14 }
+  ];
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename;
@@ -466,15 +571,15 @@ function downloadCSV(content, filename){
   URL.revokeObjectURL(url);
 }
 
-document.getElementById('exportSemanaBtn').addEventListener('click', ()=>{
+document.getElementById('exportSemanaBtn').addEventListener('click', async ()=>{
   const semana = ventasUltimos7Dias();
   if(semana.length===0){ alert('No hay ventas registradas en los últimos 7 días.'); return; }
-  downloadCSV(toCSV(semana), `ventas_semana_${new Date().toISOString().slice(0,10)}.csv`);
+  await generarExcel(semana, `ventas_semana_${new Date().toISOString().slice(0,10)}.xlsx`, 'Ventas de la semana — Mora Part\'s CR');
 });
 
-document.getElementById('exportTodoBtn').addEventListener('click', ()=>{
+document.getElementById('exportTodoBtn').addEventListener('click', async ()=>{
   if(ventas.length===0){ alert('Todavía no hay ventas registradas.'); return; }
-  downloadCSV(toCSV(ventas), `ventas_historial_${new Date().toISOString().slice(0,10)}.csv`);
+  await generarExcel(ventas, `ventas_historial_${new Date().toISOString().slice(0,10)}.xlsx`, 'Historial completo de ventas — Mora Part\'s CR');
 });
 
 document.getElementById('borrarVentasBtn').addEventListener('click', ()=>{
