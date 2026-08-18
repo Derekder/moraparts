@@ -202,7 +202,7 @@
           <button class="btn btn-primary" id="downloadBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar catálogo actualizado</button>
           <button class="btn btn-outline" id="resetFileBtn">Subir otro archivo</button>
         </div>
-        <p class="note">Cuando descargués el archivo, subilo a tu repositorio de GitHub reemplazando el que ya tenés, para que los cambios se vean en tu página.</p>
+        <p class="note">Cuando descargués el archivo, subilo a tu repositorio de GitHub reemplazando el que ya tenés, para que los cambios se vean en tu página. Para crear productos nuevos o agregar fotos, usá el <strong>Editor de Catálogo</strong> (editor.html).</p>
       </div>
     </div>
 
@@ -351,7 +351,10 @@ function parseFile(text){
   fileBefore = text.slice(0, arrStart);
   fileAfter = text.slice(arrEnd + 1);
   productos = new Function('return ' + arrText)();
-  productos.forEach(p=>{ if(p.stock === undefined) p.stock = 0; });
+  productos.forEach(p=>{
+    if(p.stock === undefined) p.stock = 0;
+    if(!Array.isArray(p.colores)) p.colores = [];
+  });
 }
 
 function rebuildFileText(){
@@ -457,6 +460,7 @@ document.getElementById('downloadBtn').addEventListener('click', ()=>{
   a.click();
   URL.revokeObjectURL(url);
 });
+
 
 /* ---------- VENTAS ---------- */
 function normalize(s){ return (s||"").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
