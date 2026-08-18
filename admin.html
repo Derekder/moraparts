@@ -37,7 +37,8 @@
   .logout-btn:hover{ border-color:var(--naranja); color:var(--naranja); }
 
   .tabs{ max-width:1100px; margin:24px auto 0; padding:0 20px; display:flex; gap:10px; }
-  .tab-btn{ background:#fff; border:2px solid #dde3ec; color:var(--marino); font-family:var(--font-display); font-weight:600; padding:10px 20px; border-radius:10px 10px 0 0; font-size:0.95rem; }
+  .tab-btn{ background:#fff; border:2px solid #dde3ec; color:var(--marino); font-family:var(--font-display); font-weight:600; padding:10px 20px; border-radius:10px 10px 0 0; font-size:0.95rem; display:inline-flex; align-items:center; gap:8px; }
+  .tab-btn svg{ width:17px; height:17px; }
   .tab-btn.active{ background:var(--marino); color:#fff; border-color:var(--marino); }
 
   main{ max-width:1100px; margin:0 auto; padding:24px 20px 60px; }
@@ -73,7 +74,8 @@
   .row-cancel:hover{ color:#c23a3a; }
 
   .actions-row{ margin-top:20px; display:flex; gap:12px; flex-wrap:wrap; }
-  .btn{ font-family:var(--font-display); font-weight:700; padding:12px 22px; border-radius:8px; font-size:0.92rem; }
+  .btn{ font-family:var(--font-display); font-weight:700; padding:12px 22px; border-radius:8px; font-size:0.92rem; display:inline-flex; align-items:center; gap:8px; }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
   .btn-primary{ background:var(--naranja); color:#fff; }
   .btn-primary:hover{ background:#e85e14; }
   .btn-secondary{ background:var(--marino); color:#fff; }
@@ -91,6 +93,9 @@
   .venta-search{ display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid #dde3ec; border-radius:8px; padding:10px 14px; margin-bottom:12px; color:var(--gris); }
   .venta-search:focus-within{ border-color:var(--azul); }
   .venta-search input{ flex:1; border:none; outline:none; font-size:0.9rem; color:var(--negro); }
+  .form-error{ display:none; background:#fdeceb; color:#c23a3a; border:1px solid #f3c8c4; padding:10px 14px; border-radius:8px; font-size:0.85rem; font-weight:600; margin:-12px 0 20px; }
+  .form-error.show{ display:block; }
+  input.input-invalid, select.input-invalid{ border-color:#c23a3a !important; }
 
   .summary-row{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:22px; }
   @media (max-width:700px){ .summary-row{ grid-template-columns:1fr; } }
@@ -125,16 +130,16 @@
   </header>
 
   <div class="tabs">
-    <button class="tab-btn active" data-tab="productos">📦 Productos y precios</button>
-    <button class="tab-btn" data-tab="ventas">💵 Ventas de la semana</button>
+    <button class="tab-btn active" data-tab="productos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4a2 2 0 0 0 1-1.73z"/><polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/></svg> Productos y precios</button>
+    <button class="tab-btn" data-tab="ventas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg> Ventas de la semana</button>
   </div>
 
   <main>
     <!-- TAB PRODUCTOS -->
     <div class="panel active" id="panel-productos">
       <div class="upload-box" id="uploadBox">
-        <p>Subí el archivo <strong>index.html</strong> que tenés publicado en GitHub (el mismo que descargaste de Claude) para poder ver y editar tus productos.</p>
-        <label class="upload-label" for="fileInput">Elegir archivo index.html</label>
+        <p>Conectá tu catálogo para empezar a administrar precios y stock.</p>
+        <label class="upload-label" for="fileInput">Cargar mi catálogo</label>
         <input type="file" id="fileInput" accept=".html">
         <div class="file-name" id="fileName"></div>
       </div>
@@ -153,7 +158,7 @@
         </table>
 
         <div class="actions-row">
-          <button class="btn btn-primary" id="downloadBtn">⬇ Descargar index.html actualizado</button>
+          <button class="btn btn-primary" id="downloadBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar catálogo actualizado</button>
           <button class="btn btn-outline" id="resetFileBtn">Subir otro archivo</button>
         </div>
         <p class="note">Al descargar, reemplazá el archivo <code>index.html</code> en tu repositorio de GitHub (mismo proceso de siempre: editar → borrar todo → pegar → Commit changes) para que los cambios se vean en la página.</p>
@@ -180,10 +185,11 @@
           </div>
           <div>
             <label>Cantidad</label>
-            <input type="number" id="ventaCantidad" value="1" min="1">
+            <input type="number" id="ventaCantidad" value="1" min="1" step="1">
           </div>
           <button id="registrarVentaBtn">Registrar venta</button>
         </div>
+        <div class="form-error" id="ventaFormError"></div>
 
         <div class="summary-row">
           <div class="summary-card"><div class="num" id="sumUnidades">0</div><div class="lbl">Unidades vendidas (7 días)</div></div>
@@ -198,9 +204,9 @@
         <div id="ventasEmpty" class="empty-msg" style="display:none;">Todavía no registraste ninguna venta.</div>
 
         <div class="actions-row">
-          <button class="btn btn-secondary" id="exportSemanaBtn">⬇ Descargar Excel de esta semana (.xlsx)</button>
-          <button class="btn btn-outline" id="exportTodoBtn">⬇ Descargar historial completo (.xlsx)</button>
-          <button class="btn btn-outline" id="borrarVentasBtn">🗑 Borrar historial de ventas</button>
+          <button class="btn btn-secondary" id="exportSemanaBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar Excel de esta semana (.xlsx)</button>
+          <button class="btn btn-outline" id="exportTodoBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar historial completo (.xlsx)</button>
+          <button class="btn btn-outline" id="borrarVentasBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> Borrar historial de ventas</button>
         </div>
         <p class="note">Registrá acá cada venta que confirmés por WhatsApp. El stock del producto se descuenta automáticamente — recordá descargar el index.html actualizado después.</p>
       </div>
@@ -362,9 +368,28 @@ function renderProductosTable(){
       const row = btn.closest('tr');
       const precioInput = row.querySelector('.precio-input');
       const stockInput = row.querySelector('.stock-input');
+      const nuevoPrecio = Number(precioInput.value);
+      const nuevoStock = Number(stockInput.value);
+
+      precioInput.classList.remove('input-invalid');
+      stockInput.classList.remove('input-invalid');
+
+      if(precioInput.value === '' || !Number.isFinite(nuevoPrecio) || nuevoPrecio < 0){
+        alert('El precio debe ser un número igual o mayor a 0.');
+        precioInput.classList.add('input-invalid');
+        precioInput.focus();
+        return;
+      }
+      if(stockInput.value === '' || !Number.isInteger(nuevoStock) || nuevoStock < 0){
+        alert('El stock debe ser un número entero igual o mayor a 0 (sin decimales).');
+        stockInput.classList.add('input-invalid');
+        stockInput.focus();
+        return;
+      }
+
       const p = productos.find(pp=>pp.id===id);
-      p.precio = Number(precioInput.value) || 0;
-      p.stock = Number(stockInput.value) || 0;
+      p.precio = nuevoPrecio;
+      p.stock = nuevoStock;
       editingIds.delete(id);
       renderProductosTable();
       renderVentaSelectors();
@@ -416,6 +441,9 @@ function updateColorSelector(){
   const id = Number(document.getElementById('ventaProducto').value);
   const p = productos.find(pp=>pp.id===id);
   const colorSel = document.getElementById('ventaColor');
+  const cantInput = document.getElementById('ventaCantidad');
+  const registrarBtn = document.getElementById('registrarVentaBtn');
+
   if(p && p.colores && p.colores.length){
     colorSel.innerHTML = p.colores.map(c=>`<option value="${c}">${c}</option>`).join('');
     colorSel.disabled = false;
@@ -423,16 +451,64 @@ function updateColorSelector(){
     colorSel.innerHTML = `<option value="">—</option>`;
     colorSel.disabled = true;
   }
+
+  clearVentaError();
+  if(p){
+    cantInput.max = p.stock > 0 ? p.stock : 1;
+    if(Number(cantInput.value) > p.stock){ cantInput.value = p.stock > 0 ? p.stock : 1; }
+    if(p.stock <= 0){
+      registrarBtn.disabled = true;
+      registrarBtn.textContent = 'Sin stock disponible';
+      showVentaError(`"${p.nombre} — ${p.moto}" está agotado. Actualizá el stock antes de registrar una venta.`);
+    } else {
+      registrarBtn.disabled = false;
+      registrarBtn.textContent = 'Registrar venta';
+    }
+  }
+}
+
+function showVentaError(msg){
+  const box = document.getElementById('ventaFormError');
+  box.textContent = msg;
+  box.classList.add('show');
+}
+function clearVentaError(){
+  const box = document.getElementById('ventaFormError');
+  box.textContent = '';
+  box.classList.remove('show');
 }
 
 function saveVentas(){ localStorage.setItem('moraparts_ventas', JSON.stringify(ventas)); }
 
 document.getElementById('registrarVentaBtn').addEventListener('click', ()=>{
+  clearVentaError();
   const id = Number(document.getElementById('ventaProducto').value);
   const color = document.getElementById('ventaColor').value;
-  const cantidad = Math.max(1, Number(document.getElementById('ventaCantidad').value) || 1);
+  const cantidadInput = document.getElementById('ventaCantidad');
+  const cantidad = Number(cantidadInput.value);
   const p = productos.find(pp=>pp.id===id);
-  if(!p) return;
+
+  cantidadInput.classList.remove('input-invalid');
+
+  if(!p){
+    showVentaError('Elegí un producto válido antes de registrar la venta.');
+    return;
+  }
+  if(!Number.isInteger(cantidad) || cantidad < 1){
+    showVentaError('La cantidad debe ser un número entero mayor a 0.');
+    cantidadInput.classList.add('input-invalid');
+    return;
+  }
+  if(p.stock <= 0){
+    showVentaError(`"${p.nombre} — ${p.moto}" está agotado. No se puede registrar esta venta.`);
+    cantidadInput.classList.add('input-invalid');
+    return;
+  }
+  if(cantidad > p.stock){
+    showVentaError(`Solo quedan ${p.stock} unidad(es) de "${p.nombre} — ${p.moto}" en stock. No podés vender ${cantidad}.`);
+    cantidadInput.classList.add('input-invalid');
+    return;
+  }
 
   ventas.push({
     fecha: new Date().toISOString(),
@@ -448,6 +524,7 @@ document.getElementById('registrarVentaBtn').addEventListener('click', ()=>{
   saveVentas();
 
   document.getElementById('ventaCantidad').value = 1;
+  clearVentaError();
   renderProductosTable();
   renderVentaSelectors();
   renderVentasTable();
