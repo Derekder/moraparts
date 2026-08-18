@@ -70,7 +70,38 @@
     font-size:0.68rem; font-weight:800; width:19px; height:19px; border-radius:50%;
     display:flex; align-items:center; justify-content:center; border:2px solid var(--naranja);
   }
-  @media (max-width:820px){ nav{ display:none; } .wa-mini span{ display:none; } }
+  .icon-btn{
+    background: transparent; border:2px solid rgba(255,255,255,0.35); color:#fff;
+    width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:1.05rem; transition: border-color .15s, color .15s;
+  }
+  .icon-btn:hover{ border-color: var(--naranja); color: var(--naranja); }
+  .menu-btn{ display:none; font-size:1.3rem; font-weight:900; }
+  @media (max-width:820px){ nav{ display:none; } .wa-mini span{ display:none; } .menu-btn{ display:flex; } }
+
+  /* Search bar */
+  .search-bar{ max-height:0; overflow:hidden; background: var(--marino-2); transition: max-height .25s ease; }
+  .search-bar.show{ max-height:74px; }
+  .search-bar-inner{ max-width:1200px; margin:0 auto; display:flex; align-items:center; gap:12px; padding:16px 20px; }
+  .search-bar-inner .search-icon{ font-size:1.15rem; }
+  .search-bar-inner input{
+    flex:1; background:transparent; border:none; outline:none; color:#fff;
+    font-family: var(--font-body); font-size:1rem;
+  }
+  .search-bar-inner input::placeholder{ color: var(--gris); }
+  .search-bar-inner button{ background:transparent; color: var(--gris); font-size:1.4rem; }
+  .search-bar-inner button:hover{ color: var(--naranja); }
+
+  /* Mobile / options menu */
+  .mobile-menu{
+    position:absolute; top:100%; right:20px; margin-top:8px; background:#fff; border-radius:10px;
+    box-shadow: 0 16px 34px -12px rgba(5,7,10,0.35); display:none; flex-direction:column; overflow:hidden;
+    z-index:60; min-width:190px; border:1px solid #e7ebf1;
+  }
+  .mobile-menu.show{ display:flex; }
+  .mobile-menu a{ padding:14px 18px; color: var(--marino); font-weight:600; font-size:0.92rem; border-bottom:1px solid #eef1f6; }
+  .mobile-menu a:last-child{ border-bottom:none; }
+  .mobile-menu a:hover{ background:#f5f7fa; color: var(--azul); }
 
   /* Hero */
   .hero{
@@ -203,8 +234,23 @@
       <li><a href="#contacto">Contacto</a></li>
     </ul></nav>
     <div class="header-actions">
+      <button class="icon-btn" id="searchBtn" aria-label="Buscar producto">🔍</button>
       <a class="wa-mini" href="https://wa.me/50661284130" target="_blank" rel="noopener">📱 <span>6128-4130</span></a>
       <button class="cart-btn" id="cartBtn" aria-label="Ver carrito">🛒<span class="cart-count" id="cartCount">0</span></button>
+      <button class="icon-btn menu-btn" id="menuBtn" aria-label="Más opciones">⋮</button>
+    </div>
+    <div class="mobile-menu" id="mobileMenu">
+      <a href="#inicio">Inicio</a>
+      <a href="#catalogo">Catálogo</a>
+      <a href="#contacto">Contacto</a>
+      <a href="https://wa.me/50661284130" target="_blank" rel="noopener">Escribir por WhatsApp</a>
+    </div>
+  </div>
+  <div class="search-bar" id="searchBar">
+    <div class="search-bar-inner">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Buscar producto: manilla, casco, CRF 250...">
+      <button id="searchClose" aria-label="Cerrar búsqueda">×</button>
     </div>
   </div>
 </header>
@@ -328,9 +374,11 @@ document.getElementById('year').textContent = new Date().getFullYear();
 
 const motos = ["Todos", ...Array.from(new Set(productos.map(p=>p.moto)))];
 let filtroActivo = "Todos";
+let searchQuery = "";
 let cart = [];
 
 function money(n){ return "₡" + n.toLocaleString('es-CR'); }
+function normalize(s){ return (s||"").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
 
 function renderFilters(){
   const box = document.getElementById('filters');
@@ -344,8 +392,19 @@ function renderFilters(){
 
 function renderCatalog(){
   const cont = document.getElementById('catalogContainer');
-  const visibles = productos.filter(p => filtroActivo==="Todos" || p.moto===filtroActivo);
+  let visibles = productos.filter(p => filtroActivo==="Todos" || p.moto===filtroActivo);
+
+  if(searchQuery){
+    const q = normalize(searchQuery);
+    visibles = visibles.filter(p => normalize(`${p.nombre} ${p.categoria} ${p.moto} ${p.color||''}`).includes(q));
+  }
+
   const categorias = Array.from(new Set(visibles.map(p=>p.categoria)));
+
+  if(categorias.length===0){
+    cont.innerHTML = `<div class="empty-cart" style="margin:50px auto; max-width:360px;">No encontramos productos para "<strong>${searchQuery}</strong>". Probá con otra palabra, por ejemplo el modelo de moto o la categoría.</div>`;
+    return;
+  }
 
   cont.innerHTML = categorias.map(cat=>{
     const items = visibles.filter(p=>p.categoria===cat);
@@ -452,6 +511,43 @@ document.getElementById('checkoutBtn').addEventListener('click', ()=>{
   const mensaje = `Hola! Quiero pedir:\n${lineas.join('\n')}\n\nTotal: ${money(total)}`;
   const url = `https://wa.me/${WHATSAPP_NUMERO}?text=${encodeURIComponent(mensaje)}`;
   window.open(url, '_blank');
+});
+
+// Buscador
+const searchBtn = document.getElementById('searchBtn');
+const searchBar = document.getElementById('searchBar');
+const searchInput = document.getElementById('searchInput');
+const searchClose = document.getElementById('searchClose');
+
+searchBtn.addEventListener('click', ()=>{
+  searchBar.classList.toggle('show');
+  if(searchBar.classList.contains('show')) searchInput.focus();
+});
+searchClose.addEventListener('click', ()=>{
+  searchBar.classList.remove('show');
+  searchInput.value = "";
+  searchQuery = "";
+  renderCatalog();
+});
+searchInput.addEventListener('input', ()=>{
+  searchQuery = searchInput.value.trim();
+  renderCatalog();
+});
+
+// Menú de tres puntos
+const menuBtn = document.getElementById('menuBtn');
+const mobileMenu = document.getElementById('mobileMenu');
+menuBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  mobileMenu.classList.toggle('show');
+});
+document.addEventListener('click', (e)=>{
+  if(!mobileMenu.contains(e.target) && e.target!==menuBtn){
+    mobileMenu.classList.remove('show');
+  }
+});
+mobileMenu.querySelectorAll('a').forEach(a=>{
+  a.addEventListener('click', ()=> mobileMenu.classList.remove('show'));
 });
 
 renderFilters();
