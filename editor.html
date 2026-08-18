@@ -133,6 +133,7 @@
   .modal-body{ padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; }
   .modal-body label{ font-size:0.75rem; color:var(--gris); font-weight:600; text-transform:uppercase; letter-spacing:0.04em; margin-top:12px; margin-bottom:5px; }
   .modal-body input{ width:100%; padding:10px 12px; border:1px solid #dde3ec; border-radius:8px; font-size:0.92rem; }
+  .modal-body select{ width:100%; padding:10px 12px; border:1px solid #dde3ec; border-radius:8px; font-size:0.92rem; background:#fff; }
   .modal-two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .modal-image-row{ display:flex; align-items:center; gap:14px; }
   .modal-image-box{ width:88px; height:88px; border-radius:10px; background:var(--marino); flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
@@ -255,12 +256,12 @@
           <input type="text" id="modalNombre" placeholder="Ej: Cobertor de Motor">
 
           <label>Categoría</label>
-          <input type="text" id="modalCategoria" list="categoriasList" placeholder="Ej: Cobertores de Motor">
-          <datalist id="categoriasList"></datalist>
+          <select id="modalCategoriaSelect"></select>
+          <input type="text" id="modalCategoriaNew" placeholder="Escribí el nombre de la nueva categoría" style="display:none; margin-top:8px;">
 
           <label>Moto / Modelo</label>
-          <input type="text" id="modalMoto" list="motosList" placeholder="Ej: CRF 300">
-          <datalist id="motosList"></datalist>
+          <select id="modalMotoSelect"></select>
+          <input type="text" id="modalMotoNew" placeholder="Escribí el nombre de la nueva moto/modelo" style="display:none; margin-top:8px;">
 
           <label>Colores disponibles</label>
           <div class="color-checks" id="modalColores"></div>
@@ -516,8 +517,10 @@ let modalImageData = null; // dataURL pendiente, o null si no hay imagen
 
 const prodModalOverlay = document.getElementById('prodModalOverlay');
 const modalNombre = document.getElementById('modalNombre');
-const modalCategoria = document.getElementById('modalCategoria');
-const modalMoto = document.getElementById('modalMoto');
+const modalCategoriaSelect = document.getElementById('modalCategoriaSelect');
+const modalCategoriaNew = document.getElementById('modalCategoriaNew');
+const modalMotoSelect = document.getElementById('modalMotoSelect');
+const modalMotoNew = document.getElementById('modalMotoNew');
 const modalPrecio = document.getElementById('modalPrecio');
 const modalStock = document.getElementById('modalStock');
 const modalColoresBox = document.getElementById('modalColores');
@@ -526,12 +529,29 @@ const modalImagePlaceholder = document.getElementById('modalImagePlaceholder');
 const modalImageRemoveBtn = document.getElementById('modalImageRemoveBtn');
 const modalError = document.getElementById('modalError');
 
-function fillDatalists(){
-  document.getElementById('categoriasList').innerHTML =
-    Array.from(new Set(productos.map(p=>p.categoria))).map(c=>`<option value="${c}">`).join('');
-  document.getElementById('motosList').innerHTML =
-    Array.from(new Set(productos.map(p=>p.moto))).map(m=>`<option value="${m}">`).join('');
+const NUEVA_OPCION = "__nueva__";
+
+function fillSelect(selectEl, valores, valorActual){
+  const opciones = valores.map(v=>`<option value="${v}">${v}</option>`).join('');
+  selectEl.innerHTML = opciones + `<option value="${NUEVA_OPCION}">+ Agregar nueva…</option>`;
+  if(valorActual && valores.includes(valorActual)){
+    selectEl.value = valorActual;
+  } else if(valorActual){
+    // el producto tiene un valor que no está en la lista (raro, pero por si acaso)
+    selectEl.value = NUEVA_OPCION;
+  } else {
+    selectEl.value = valores[0] || NUEVA_OPCION;
+  }
 }
+
+function toggleNewField(selectEl, inputEl, prellenar){
+  const isNew = selectEl.value === NUEVA_OPCION;
+  inputEl.style.display = isNew ? 'block' : 'none';
+  if(isNew){ inputEl.value = prellenar || ''; inputEl.focus(); }
+}
+
+modalCategoriaSelect.addEventListener('change', ()=> toggleNewField(modalCategoriaSelect, modalCategoriaNew));
+modalMotoSelect.addEventListener('change', ()=> toggleNewField(modalMotoSelect, modalMotoNew));
 
 function renderModalColores(seleccionados){
   modalColoresBox.innerHTML = Object.keys(COLOR_HEX).map(c=>`
@@ -566,16 +586,20 @@ function updateModalImagePreview(){
 function openProductModal(id){
   modalEditId = id;
   modalError.classList.remove('show');
-  fillDatalists();
 
   const p = id != null ? productos.find(pp=>pp.id===id) : null;
+  const categorias = Array.from(new Set(productos.map(pp=>pp.categoria)));
+  const motos = Array.from(new Set(productos.map(pp=>pp.moto)));
 
   document.getElementById('modalTitle').textContent = p ? 'Editar producto' : 'Nuevo producto';
   document.getElementById('modalDeleteBtn').style.display = p ? 'inline-flex' : 'none';
 
   modalNombre.value = p ? p.nombre : '';
-  modalCategoria.value = p ? p.categoria : '';
-  modalMoto.value = p ? p.moto : '';
+  fillSelect(modalCategoriaSelect, categorias, p ? p.categoria : null);
+  toggleNewField(modalCategoriaSelect, modalCategoriaNew, p ? p.categoria : '');
+  fillSelect(modalMotoSelect, motos, p ? p.moto : null);
+  toggleNewField(modalMotoSelect, modalMotoNew, p ? p.moto : '');
+
   modalPrecio.value = p ? p.precio : '';
   modalStock.value = p ? p.stock : '';
   modalImageData = p && p.imagen ? p.imagen : null;
@@ -621,15 +645,15 @@ function showModalError(msg){
 
 document.getElementById('modalSaveBtn').addEventListener('click', ()=>{
   const nombre = modalNombre.value.trim();
-  const categoria = modalCategoria.value.trim();
-  const moto = modalMoto.value.trim();
+  const categoria = (modalCategoriaSelect.value === NUEVA_OPCION ? modalCategoriaNew.value : modalCategoriaSelect.value).trim();
+  const moto = (modalMotoSelect.value === NUEVA_OPCION ? modalMotoNew.value : modalMotoSelect.value).trim();
   const precio = Number(modalPrecio.value);
   const stock = Number(modalStock.value);
   const colores = Array.from(modalColoresBox.querySelectorAll('input:checked')).map(i=>i.value);
 
   if(!nombre){ showModalError('Escribí el nombre del producto.'); modalNombre.focus(); return; }
-  if(!categoria){ showModalError('Escribí o elegí una categoría.'); modalCategoria.focus(); return; }
-  if(!moto){ showModalError('Escribí o elegí la moto / modelo.'); modalMoto.focus(); return; }
+  if(!categoria){ showModalError('Escribí el nombre de la nueva categoría, o elegí una existente.'); (modalCategoriaSelect.value===NUEVA_OPCION?modalCategoriaNew:modalCategoriaSelect).focus(); return; }
+  if(!moto){ showModalError('Escribí el nombre de la nueva moto/modelo, o elegí una existente.'); (modalMotoSelect.value===NUEVA_OPCION?modalMotoNew:modalMotoSelect).focus(); return; }
   if(modalPrecio.value === '' || !Number.isFinite(precio) || precio < 0){ showModalError('El precio debe ser un número igual o mayor a 0.'); modalPrecio.focus(); return; }
   if(modalStock.value === '' || !Number.isInteger(stock) || stock < 0){ showModalError('El stock debe ser un número entero igual o mayor a 0.'); modalStock.focus(); return; }
 
