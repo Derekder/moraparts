@@ -347,7 +347,12 @@
 const ADMIN_PASSWORD = "moraparts2026";
 /* ==================================================================== */
 
-const COLOR_HEX = { "Negro":"#1b1e24","Rojo":"#e3352b","Azul":"#0a66ff","Naranja":"#ff7a1f","Blanco":"#f4f5f7","Gris":"#9aa4b2" };
+const COLOR_HEX = {
+  "Negro":"#1b1e24", "Rojo":"#e3352b", "Azul":"#0a66ff", "Naranja":"#ff7a1f",
+  "Blanco":"#f4f5f7", "Gris":"#9aa4b2", "Amarillo":"#f5c400",
+  "Tornasol":"linear-gradient(135deg, #ff0055, #ff8a00, #ffe600, #00e676, #00c3ff, #7a3cff)",
+  "Sin color":"repeating-linear-gradient(45deg, #ffffff, #ffffff 4px, #d8dde5 4px, #d8dde5 8px)"
+};
 
 let productos = [];
 let fileBefore = "", fileAfter = "";
@@ -656,8 +661,21 @@ function renderModalColores(seleccionados){
     label.addEventListener('click', (e)=>{
       e.preventDefault();
       const input = label.querySelector('input');
-      input.checked = !input.checked;
-      label.classList.toggle('checked', input.checked);
+      const marcando = !input.checked;
+      input.checked = marcando;
+      label.classList.toggle('checked', marcando);
+
+      const esSinColor = label.dataset.color === 'Sin color';
+      if(marcando){
+        modalColoresBox.querySelectorAll('.color-check').forEach(otra=>{
+          const esOtraSinColor = otra.dataset.color === 'Sin color';
+          // "Sin color" es excluyente: si marco Sin color, se desmarca todo lo demás; si marco otro color, se desmarca Sin color
+          if((esSinColor && !esOtraSinColor) || (!esSinColor && esOtraSinColor)){
+            otra.querySelector('input').checked = false;
+            otra.classList.remove('checked');
+          }
+        });
+      }
     });
   });
 }
@@ -750,7 +768,8 @@ document.getElementById('modalSaveBtn').addEventListener('click', ()=>{
   const motos = Array.from(modalMotosBox.querySelectorAll('input:checked')).map(i=>i.value);
   const precio = Number(modalPrecio.value);
   const stock = Number(modalStock.value);
-  const colores = Array.from(modalColoresBox.querySelectorAll('input:checked')).map(i=>i.value);
+  let colores = Array.from(modalColoresBox.querySelectorAll('input:checked')).map(i=>i.value);
+  if(colores.includes('Sin color')) colores = [];
 
   if(!nombre){ showModalError('Escribí el nombre del producto.'); modalNombre.focus(); return; }
   if(!marca){ showModalError('Escribí el nombre de la nueva marca, o elegí una existente.'); (modalMarcaSelect.value===NUEVA_OPCION?modalMarcaNew:modalMarcaSelect).focus(); return; }
