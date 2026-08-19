@@ -442,6 +442,7 @@ function parseFile(text){
     }
     if(p.imagenes.length === 0) delete p.imagenes;
     if(p.motos) p.motos = Array.from(new Set(p.motos.map(m => (m||'').trim())));
+    if(p.colores) p.colores = p.colores.filter(c => c !== 'Sin color');
   });
 }
 
