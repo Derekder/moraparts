@@ -155,6 +155,15 @@
   #modalImageAddBtn{ margin-bottom:14px; padding:9px 16px; font-size:0.85rem; }
   .color-checks{ display:flex; flex-wrap:wrap; gap:8px; }
   .add-new-row{ display:flex; gap:8px; margin-top:8px; }
+  .unify-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .unify-row input{ flex:1; padding:9px 12px; border:1px solid #dde3ec; border-radius:8px; font-size:0.9rem; }
+  .unify-row .unify-count{ font-size:0.72rem; color:var(--gris); white-space:nowrap; min-width:78px; text-align:right; }
+  .unify-row .unify-delete{
+    width:32px; height:32px; border-radius:8px; background:#fdeceb; color:#c23a3a;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .unify-row .unify-delete:hover{ background:#c23a3a; color:#fff; }
+  .unify-row .unify-delete svg{ width:15px; height:15px; }
   .add-new-row input{ flex:1; }
   .add-new-row .btn{ padding:9px 16px; font-size:0.82rem; white-space:nowrap; }
   .color-check{ display:flex; align-items:center; gap:6px; border:2px solid #dde3ec; border-radius:999px; padding:6px 12px 6px 8px; cursor:pointer; font-size:0.82rem; font-weight:600; color:var(--marino); }
@@ -235,10 +244,16 @@
 
         <div class="prod-toolbar">
           <div class="filters" id="prodFilters"></div>
-          <button class="btn btn-primary" id="newProductBtn">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nuevo producto
-          </button>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-outline" id="unifyMotosBtn">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+              Unificar modelos de moto
+            </button>
+            <button class="btn btn-primary" id="newProductBtn">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nuevo producto
+            </button>
+          </div>
         </div>
 
         <div id="prodCatalog"></div>
@@ -302,6 +317,28 @@
     </div>
 
     <!-- MODAL PRODUCTO fin -->
+
+    <!-- MODAL UNIFICAR MOTOS -->
+    <div class="modal-overlay" id="unifyModalOverlay">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Unificar modelos de moto</h3>
+          <button class="modal-close" id="unifyModalClose" type="button">×</button>
+        </div>
+        <div class="modal-body">
+          <p style="color:var(--gris); font-size:0.85rem; margin-bottom:14px;">
+            Estos son todos los modelos de moto que aparecen en tu catálogo. Si ves el mismo modelo escrito de dos formas (ej: "XR190" y "XR 190"), corregí el nombre acá — se va a actualizar en <strong>todos</strong> los productos que lo usan, y los duplicados se combinan en uno solo.
+          </p>
+          <div id="unifyMotosList"></div>
+          <div class="form-error" id="unifyError"></div>
+        </div>
+        <div class="modal-foot">
+          <div style="flex:1"></div>
+          <button class="btn btn-outline" id="unifyCancelBtn" type="button">Cancelar</button>
+          <button class="btn btn-primary" id="unifySaveBtn" type="button">Guardar cambios</button>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -399,6 +436,7 @@ function parseFile(text){
       delete p.imagen;
     }
     if(p.imagenes.length === 0) delete p.imagenes;
+    if(p.motos) p.motos = Array.from(new Set(p.motos.map(m => (m||'').trim())));
   });
 }
 
@@ -751,6 +789,83 @@ document.getElementById('modalDeleteBtn').addEventListener('click', ()=>{
     renderProdFilters();
     renderProductosCatalog();
   }
+});
+
+/* ---------- UNIFICAR MODELOS DE MOTO ---------- */
+const unifyModalOverlay = document.getElementById('unifyModalOverlay');
+const unifyMotosList = document.getElementById('unifyMotosList');
+const unifyError = document.getElementById('unifyError');
+let motosAEliminar = [];
+
+function openUnifyModal(){
+  unifyError.classList.remove('show');
+  motosAEliminar = [];
+  const distintos = Array.from(new Set(productos.flatMap(p=>p.motos||[]))).sort();
+  if(distintos.length === 0){
+    unifyMotosList.innerHTML = `<p style="color:var(--gris); font-size:0.85rem;">Todavía no hay modelos de moto cargados en ningún producto.</p>`;
+  } else {
+    unifyMotosList.innerHTML = distintos.map(m=>{
+      const count = productos.filter(p=>p.motos && p.motos.includes(m)).length;
+      return `
+      <div class="unify-row" data-original="${m}">
+        <input type="text" value="${m}" data-original="${m}">
+        <span class="unify-count">${count} producto${count===1?'':'s'}</span>
+        <button type="button" class="unify-delete" data-original="${m}" title="Eliminar este modelo de todos los productos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </button>
+      </div>`;
+    }).join('');
+  }
+  unifyModalOverlay.classList.add('show');
+
+  unifyMotosList.querySelectorAll('.unify-delete').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const original = btn.dataset.original;
+      motosAEliminar.push(original);
+      btn.closest('.unify-row').remove();
+    });
+  });
+}
+function closeUnifyModal(){
+  unifyModalOverlay.classList.remove('show');
+}
+
+document.getElementById('unifyMotosBtn').addEventListener('click', openUnifyModal);
+document.getElementById('unifyModalClose').addEventListener('click', closeUnifyModal);
+document.getElementById('unifyCancelBtn').addEventListener('click', closeUnifyModal);
+unifyModalOverlay.addEventListener('click', (e)=>{ if(e.target===unifyModalOverlay) closeUnifyModal(); });
+
+document.getElementById('unifySaveBtn').addEventListener('click', ()=>{
+  const inputs = Array.from(unifyMotosList.querySelectorAll('input'));
+  const mapping = {};
+  for(const inp of inputs){
+    const nuevo = inp.value.trim();
+    if(!nuevo){
+      unifyError.textContent = 'Ningún modelo puede quedar vacío. Si querés quitarlo, usá el botón de la papelera en esa fila.';
+      unifyError.classList.add('show');
+      inp.focus();
+      return;
+    }
+    mapping[inp.dataset.original] = nuevo;
+  }
+
+  if(motosAEliminar.length){
+    const afectados = productos.filter(p => p.motos && p.motos.some(m => motosAEliminar.includes(m))).length;
+    const ok = confirm(`Vas a eliminar ${motosAEliminar.length} modelo(s) de moto (${motosAEliminar.join(', ')}), lo que afecta a ${afectados} producto(s). Esto no borra los productos, solo esos modelos de su lista de motos compatibles. ¿Continuar?`);
+    if(!ok) return;
+  }
+
+  productos.forEach(p=>{
+    if(p.motos && p.motos.length){
+      let nuevos = p.motos.filter(m => !motosAEliminar.includes(m));
+      nuevos = nuevos.map(m => mapping[m] !== undefined ? mapping[m] : m);
+      p.motos = Array.from(new Set(nuevos));
+    }
+  });
+
+  closeUnifyModal();
+  renderProdFilters();
+  renderProductosCatalog();
 });
 </script>
 </body>
