@@ -266,6 +266,10 @@
           <label>Nombre del producto</label>
           <input type="text" id="modalNombre" placeholder="Ej: Cobertor de Motor">
 
+          <label>Marca</label>
+          <select id="modalMarcaSelect"></select>
+          <input type="text" id="modalMarcaNew" placeholder="Escribí el nombre de la nueva marca (ej: Tusk, Biker)" style="display:none; margin-top:8px;">
+
           <label>Categoría</label>
           <select id="modalCategoriaSelect"></select>
           <input type="text" id="modalCategoriaNew" placeholder="Escribí el nombre de la nueva categoría" style="display:none; margin-top:8px;">
@@ -479,7 +483,7 @@ function renderProductosCatalog(){
             </div>
             <div class="prod-card-body">
               <div class="prod-card-tag">${(p.motos||[]).join(' · ')}</div>
-              <div class="prod-card-name">${p.nombre}</div>
+              <div class="prod-card-name">${p.nombre}${p.marca ? ` <span style="color:#9aa4b2; font-weight:400; font-size:0.78rem;">(${p.marca})</span>` : ''}</div>
               <div class="prod-card-colors">
                 ${(p.colores && p.colores.length)
                   ? p.colores.map(c=>`<span class="mini-swatch" style="background:${COLOR_HEX[c]||'#ccc'}" title="${c}"></span>`).join('')
@@ -549,6 +553,8 @@ let modalImageData = null; // dataURL pendiente, o null si no hay imagen
 
 const prodModalOverlay = document.getElementById('prodModalOverlay');
 const modalNombre = document.getElementById('modalNombre');
+const modalMarcaSelect = document.getElementById('modalMarcaSelect');
+const modalMarcaNew = document.getElementById('modalMarcaNew');
 const modalCategoriaSelect = document.getElementById('modalCategoriaSelect');
 const modalCategoriaNew = document.getElementById('modalCategoriaNew');
 const modalMotosBox = document.getElementById('modalMotos');
@@ -583,6 +589,7 @@ function toggleNewField(selectEl, inputEl, prellenar){
   if(isNew){ inputEl.value = prellenar || ''; inputEl.focus(); }
 }
 
+modalMarcaSelect.addEventListener('change', ()=> toggleNewField(modalMarcaSelect, modalMarcaNew));
 modalCategoriaSelect.addEventListener('change', ()=> toggleNewField(modalCategoriaSelect, modalCategoriaNew));
 
 function renderModalMotos(seleccionados){
@@ -647,6 +654,7 @@ function openProductModal(id){
   modalError.classList.remove('show');
 
   const p = id != null ? productos.find(pp=>pp.id===id) : null;
+  const marcas = Array.from(new Set(productos.map(pp=>pp.marca).filter(Boolean)));
   const categorias = Array.from(new Set(productos.map(pp=>pp.categoria)));
   motosPool = Array.from(new Set(productos.flatMap(pp=>pp.motos||[])));
 
@@ -654,6 +662,8 @@ function openProductModal(id){
   document.getElementById('modalDeleteBtn').style.display = p ? 'inline-flex' : 'none';
 
   modalNombre.value = p ? p.nombre : '';
+  fillSelect(modalMarcaSelect, marcas, p ? p.marca : null);
+  toggleNewField(modalMarcaSelect, modalMarcaNew, p ? p.marca : '');
   fillSelect(modalCategoriaSelect, categorias, p ? p.categoria : null);
   toggleNewField(modalCategoriaSelect, modalCategoriaNew, p ? p.categoria : '');
   modalMotoNewInput.value = '';
@@ -704,6 +714,7 @@ function showModalError(msg){
 
 document.getElementById('modalSaveBtn').addEventListener('click', ()=>{
   const nombre = modalNombre.value.trim();
+  const marca = (modalMarcaSelect.value === NUEVA_OPCION ? modalMarcaNew.value : modalMarcaSelect.value).trim();
   const categoria = (modalCategoriaSelect.value === NUEVA_OPCION ? modalCategoriaNew.value : modalCategoriaSelect.value).trim();
   const motos = Array.from(modalMotosBox.querySelectorAll('input:checked')).map(i=>i.value);
   const precio = Number(modalPrecio.value);
@@ -711,6 +722,7 @@ document.getElementById('modalSaveBtn').addEventListener('click', ()=>{
   const colores = Array.from(modalColoresBox.querySelectorAll('input:checked')).map(i=>i.value);
 
   if(!nombre){ showModalError('Escribí el nombre del producto.'); modalNombre.focus(); return; }
+  if(!marca){ showModalError('Escribí el nombre de la nueva marca, o elegí una existente.'); (modalMarcaSelect.value===NUEVA_OPCION?modalMarcaNew:modalMarcaSelect).focus(); return; }
   if(!categoria){ showModalError('Escribí el nombre de la nueva categoría, o elegí una existente.'); (modalCategoriaSelect.value===NUEVA_OPCION?modalCategoriaNew:modalCategoriaSelect).focus(); return; }
   if(motos.length===0){ showModalError('Elegí o agregá al menos un modelo de moto compatible.'); modalMotoNewInput.focus(); return; }
   if(modalPrecio.value === '' || !Number.isFinite(precio) || precio < 0){ showModalError('El precio debe ser un número igual o mayor a 0.'); modalPrecio.focus(); return; }
@@ -718,14 +730,14 @@ document.getElementById('modalSaveBtn').addEventListener('click', ()=>{
 
   if(modalEditId != null){
     const p = productos.find(pp=>pp.id===modalEditId);
-    p.nombre = nombre; p.categoria = categoria; p.motos = motos;
+    p.nombre = nombre; p.marca = marca; p.categoria = categoria; p.motos = motos;
     p.precio = precio; p.stock = stock; p.colores = colores;
     p.imagen = modalImageData || undefined;
     if(!p.imagen) delete p.imagen;
   } else {
     const newId = productos.length ? Math.max(...productos.map(p=>p.id)) + 1 : 1;
     const nuevo = {
-      id: newId, nombre, categoria, motos, colores,
+      id: newId, nombre, marca, categoria, motos, colores,
       icono: nextIconoPool[newId % nextIconoPool.length],
       precio, stock
     };
