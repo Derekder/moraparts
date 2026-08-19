@@ -115,6 +115,10 @@
   .prod-img-btn{ position:absolute; bottom:8px; left:8px; right:8px; background:rgba(5,7,10,0.72); color:#fff; font-size:0.7rem; font-weight:700; padding:7px; border-radius:6px; text-align:center; }
   .prod-img-btn:hover{ background:var(--azul); }
   .prod-card-img.has-photo .prod-img-btn{ background:rgba(7,26,52,0.85); }
+  .photo-count-badge{
+    position:absolute; top:8px; left:8px; background:rgba(5,7,10,0.65); color:#fff;
+    font-size:0.66rem; font-weight:700; padding:3px 8px; border-radius:999px;
+  }
 
   .prod-card-body{ padding:12px; display:flex; flex-direction:column; gap:5px; flex:1; }
   .prod-card-tag{ font-size:0.68rem; font-weight:700; color:var(--azul); text-transform:uppercase; letter-spacing:0.04em; }
@@ -138,12 +142,17 @@
   .modal-body input{ width:100%; padding:10px 12px; border:1px solid #dde3ec; border-radius:8px; font-size:0.92rem; }
   .modal-body select{ width:100%; padding:10px 12px; border:1px solid #dde3ec; border-radius:8px; font-size:0.92rem; background:#fff; }
   .modal-two-col{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .modal-image-row{ display:flex; align-items:center; gap:14px; }
-  .modal-image-box{ width:88px; height:88px; border-radius:10px; background:var(--marino); flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-  .modal-image-box img{ width:100%; height:100%; object-fit:contain; background:#fff; }
-  .modal-image-box span{ color:var(--gris); font-size:0.68rem; text-align:center; padding:6px; }
-  .modal-image-actions{ display:flex; flex-direction:column; gap:8px; }
-  .modal-image-actions .btn{ padding:8px 14px; font-size:0.8rem; }
+  .image-gallery{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+  .image-gallery-empty{ color:var(--gris); font-size:0.8rem; padding:4px 0; }
+  .img-thumb{ position:relative; width:68px; height:68px; border-radius:8px; overflow:hidden; background:var(--marino); flex-shrink:0; }
+  .img-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .img-thumb-remove{
+    position:absolute; top:3px; right:3px; width:19px; height:19px; border-radius:50%;
+    background:rgba(5,7,10,0.75); color:#fff; font-size:0.75rem; line-height:1; padding:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .img-thumb-remove:hover{ background:#c23a3a; }
+  #modalImageAddBtn{ margin-bottom:14px; padding:9px 16px; font-size:0.85rem; }
   .color-checks{ display:flex; flex-wrap:wrap; gap:8px; }
   .add-new-row{ display:flex; gap:8px; margin-top:8px; }
   .add-new-row input{ flex:1; }
@@ -233,7 +242,6 @@
         </div>
 
         <div id="prodCatalog"></div>
-        <input type="file" id="quickImageInput" accept="image/*" style="display:none;">
 
         <div class="actions-row">
           <button class="btn btn-primary" id="downloadBtn"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descargar catálogo actualizado</button>
@@ -251,17 +259,10 @@
           <button class="modal-close" id="modalClose" type="button">×</button>
         </div>
         <div class="modal-body">
-          <div class="modal-image-row">
-            <div class="modal-image-box" id="modalImageBox">
-              <img id="modalImagePreview" style="display:none;">
-              <span id="modalImagePlaceholder">Sin imagen</span>
-            </div>
-            <div class="modal-image-actions">
-              <button class="btn btn-outline" id="modalImageBtn" type="button">Agregar imagen</button>
-              <button class="btn btn-outline" id="modalImageRemoveBtn" type="button" style="display:none;">Quitar imagen</button>
-              <input type="file" id="modalImageInput" accept="image/*" style="display:none;">
-            </div>
-          </div>
+          <label>Fotos del producto</label>
+          <div class="image-gallery" id="modalImageGallery"></div>
+          <button class="btn btn-outline" id="modalImageAddBtn" type="button">+ Agregar fotos</button>
+          <input type="file" id="modalImageInput" accept="image/*" multiple style="display:none;">
 
           <label>Nombre del producto</label>
           <input type="text" id="modalNombre" placeholder="Ej: Cobertor de Motor">
@@ -393,6 +394,11 @@ function parseFile(text){
       p.motos = p.moto ? [p.moto] : [];
       delete p.moto;
     }
+    if(!Array.isArray(p.imagenes)){
+      p.imagenes = p.imagen ? [p.imagen] : [];
+      delete p.imagen;
+    }
+    if(p.imagenes.length === 0) delete p.imagenes;
   });
 }
 
@@ -474,12 +480,14 @@ function renderProductosCatalog(){
         ${items.map(p=>{
           const low = p.stock > 0 && p.stock <= 3;
           const out = p.stock <= 0;
+          const fotos = p.imagenes || [];
           return `
           <div class="prod-card">
-            <div class="prod-card-img ${p.imagen ? 'has-photo' : ''}">
-              ${p.imagen ? `<img src="${p.imagen}" alt="${p.nombre}">` : `<span class="prod-noimg-icon">${p.icono || '🔧'}</span>`}
+            <div class="prod-card-img ${fotos.length ? 'has-photo' : ''}">
+              ${fotos.length ? `<img src="${fotos[0]}" alt="${p.nombre}">` : `<span class="prod-noimg-icon">${p.icono || '🔧'}</span>`}
+              ${fotos.length>1 ? `<span class="photo-count-badge">📷 ${fotos.length}</span>` : ''}
               ${out ? '<span class="agotado-badge">Agotado</span>' : ''}
-              <button type="button" class="prod-img-btn" data-id="${p.id}">${p.imagen ? 'Cambiar imagen' : 'Agregar imagen'}</button>
+              <button type="button" class="prod-img-btn" data-id="${p.id}">${fotos.length ? `Editar fotos (${fotos.length})` : 'Agregar fotos'}</button>
             </div>
             <div class="prod-card-body">
               <div class="prod-card-tag">${(p.motos||[]).join(' · ')}</div>
@@ -505,29 +513,11 @@ function renderProductosCatalog(){
     btn.addEventListener('click', ()=> openProductModal(Number(btn.dataset.id)));
   });
   cont.querySelectorAll('.prod-img-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      quickImageTargetId = Number(btn.dataset.id);
-      document.getElementById('quickImageInput').click();
-    });
+    btn.addEventListener('click', ()=> openProductModal(Number(btn.dataset.id)));
   });
 
   updateStats();
 }
-
-let quickImageTargetId = null;
-document.getElementById('quickImageInput').addEventListener('change', async (e)=>{
-  const file = e.target.files[0];
-  e.target.value = '';
-  if(!file || quickImageTargetId == null) return;
-  try{
-    const dataUrl = await resizeImageFile(file);
-    const p = productos.find(pp=>pp.id===quickImageTargetId);
-    if(p) p.imagen = dataUrl;
-    renderProductosCatalog();
-  } catch(err){
-    alert('No se pudo procesar la imagen: ' + err.message);
-  }
-});
 
 function updateStats(){
   document.getElementById('statTotal').textContent = productos.length;
@@ -549,7 +539,7 @@ document.getElementById('downloadBtn').addEventListener('click', ()=>{
 
 /* ---------- MODAL: crear / editar / eliminar producto ---------- */
 let modalEditId = null;
-let modalImageData = null; // dataURL pendiente, o null si no hay imagen
+let modalImagenes = []; // lista de dataURLs de la galería que se está editando
 
 const prodModalOverlay = document.getElementById('prodModalOverlay');
 const modalNombre = document.getElementById('modalNombre');
@@ -562,9 +552,7 @@ const modalMotoNewInput = document.getElementById('modalMotoNewInput');
 const modalPrecio = document.getElementById('modalPrecio');
 const modalStock = document.getElementById('modalStock');
 const modalColoresBox = document.getElementById('modalColores');
-const modalImagePreview = document.getElementById('modalImagePreview');
-const modalImagePlaceholder = document.getElementById('modalImagePlaceholder');
-const modalImageRemoveBtn = document.getElementById('modalImageRemoveBtn');
+const modalImageGallery = document.getElementById('modalImageGallery');
 const modalError = document.getElementById('modalError');
 
 const NUEVA_OPCION = "__nueva__";
@@ -636,17 +624,23 @@ function renderModalColores(seleccionados){
   });
 }
 
-function updateModalImagePreview(){
-  if(modalImageData){
-    modalImagePreview.src = modalImageData;
-    modalImagePreview.style.display = 'block';
-    modalImagePlaceholder.style.display = 'none';
-    modalImageRemoveBtn.style.display = 'inline-flex';
-  } else {
-    modalImagePreview.style.display = 'none';
-    modalImagePlaceholder.style.display = 'block';
-    modalImageRemoveBtn.style.display = 'none';
+function renderModalGallery(){
+  if(modalImagenes.length === 0){
+    modalImageGallery.innerHTML = `<span class="image-gallery-empty">Todavía no agregaste fotos.</span>`;
+    return;
   }
+  modalImageGallery.innerHTML = modalImagenes.map((src, i)=>`
+    <div class="img-thumb">
+      <img src="${src}">
+      <button type="button" class="img-thumb-remove" data-i="${i}" aria-label="Quitar foto">×</button>
+    </div>
+  `).join('');
+  modalImageGallery.querySelectorAll('.img-thumb-remove').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      modalImagenes.splice(Number(btn.dataset.i), 1);
+      renderModalGallery();
+    });
+  });
 }
 
 function openProductModal(id){
@@ -671,10 +665,10 @@ function openProductModal(id){
 
   modalPrecio.value = p ? p.precio : '';
   modalStock.value = p ? p.stock : '';
-  modalImageData = p && p.imagen ? p.imagen : null;
+  modalImagenes = (p && p.imagenes) ? [...p.imagenes] : [];
 
   renderModalColores(p && p.colores ? p.colores : []);
-  updateModalImagePreview();
+  renderModalGallery();
 
   prodModalOverlay.classList.add('show');
 }
@@ -682,7 +676,7 @@ function openProductModal(id){
 function closeProductModal(){
   prodModalOverlay.classList.remove('show');
   modalEditId = null;
-  modalImageData = null;
+  modalImagenes = [];
 }
 
 document.getElementById('newProductBtn').addEventListener('click', ()=> openProductModal(null));
@@ -690,21 +684,20 @@ document.getElementById('modalClose').addEventListener('click', closeProductModa
 document.getElementById('modalCancelBtn').addEventListener('click', closeProductModal);
 prodModalOverlay.addEventListener('click', (e)=>{ if(e.target === prodModalOverlay) closeProductModal(); });
 
-document.getElementById('modalImageBtn').addEventListener('click', ()=> document.getElementById('modalImageInput').click());
+document.getElementById('modalImageAddBtn').addEventListener('click', ()=> document.getElementById('modalImageInput').click());
 document.getElementById('modalImageInput').addEventListener('change', async (e)=>{
-  const file = e.target.files[0];
+  const files = Array.from(e.target.files);
   e.target.value = '';
-  if(!file) return;
+  if(!files.length) return;
   try{
-    modalImageData = await resizeImageFile(file);
-    updateModalImagePreview();
+    for(const file of files){
+      const dataUrl = await resizeImageFile(file);
+      modalImagenes.push(dataUrl);
+    }
+    renderModalGallery();
   } catch(err){
-    alert('No se pudo procesar la imagen: ' + err.message);
+    alert('No se pudo procesar una de las imágenes: ' + err.message);
   }
-});
-modalImageRemoveBtn.addEventListener('click', ()=>{
-  modalImageData = null;
-  updateModalImagePreview();
 });
 
 function showModalError(msg){
@@ -732,8 +725,7 @@ document.getElementById('modalSaveBtn').addEventListener('click', ()=>{
     const p = productos.find(pp=>pp.id===modalEditId);
     p.nombre = nombre; p.marca = marca; p.categoria = categoria; p.motos = motos;
     p.precio = precio; p.stock = stock; p.colores = colores;
-    p.imagen = modalImageData || undefined;
-    if(!p.imagen) delete p.imagen;
+    if(modalImagenes.length){ p.imagenes = [...modalImagenes]; } else { delete p.imagenes; }
   } else {
     const newId = productos.length ? Math.max(...productos.map(p=>p.id)) + 1 : 1;
     const nuevo = {
@@ -741,7 +733,7 @@ document.getElementById('modalSaveBtn').addEventListener('click', ()=>{
       icono: nextIconoPool[newId % nextIconoPool.length],
       precio, stock
     };
-    if(modalImageData) nuevo.imagen = modalImageData;
+    if(modalImagenes.length) nuevo.imagenes = [...modalImagenes];
     productos.push(nuevo);
   }
 
