@@ -539,7 +539,7 @@ function renderProductosCatalog(){
               <div class="prod-card-colors">
                 ${(p.colores && p.colores.length)
                   ? p.colores.map(c=>`<span class="mini-swatch" style="background:${COLOR_HEX[c]||'#ccc'}" title="${c}"></span>`).join('')
-                  : '<span style="color:#b6c0cf; font-size:0.72rem;">Sin color</span>'}
+                  : ''}
               </div>
               <div class="prod-card-bottom">
                 <div class="prod-card-price">${money(p.precio)}</div>
