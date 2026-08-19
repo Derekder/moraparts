@@ -921,6 +921,7 @@ function renderFilters(){
 
   marcaLabel.textContent = filtroMarca || "Marcas";
   marcaBtn.classList.toggle('has-value', !!filtroMarca);
+  document.getElementById('marcaDropdown').style.display = marcas.length ? '' : 'none';
   marcaMenu.innerHTML = marcas.map(m=>
     `<button type="button" class="filter-dd-item ${m===filtroMarca?'active':''}" data-marca="${m}">${m}</button>`
   ).join('');
