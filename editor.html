@@ -469,6 +469,20 @@ let nextIconoPool = ["🔧","⚙️","🛞","🧰","🔩","🛠️"];
 
 function normalize(s){ return (s||"").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
 
+// Fotos "principales" para mostrar en la tarjeta: las generales si existen,
+// y si no, la primera tanda de fotos que se haya subido para cualquier color.
+function fotosPrincipales(p){
+  if(p.imagenes && p.imagenes.length) return p.imagenes;
+  if(p.imagenesPorColor){
+    for(const color in p.imagenesPorColor){
+      if(p.imagenesPorColor[color] && p.imagenesPorColor[color].length){
+        return p.imagenesPorColor[color];
+      }
+    }
+  }
+  return [];
+}
+
 function resizeImageFile(file, maxDim = 480, quality = 0.68){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
@@ -536,7 +550,7 @@ function renderProductosCatalog(){
         ${items.map(p=>{
           const low = p.stock > 0 && p.stock <= 3;
           const out = p.stock <= 0;
-          const fotos = p.imagenes || [];
+          const fotos = fotosPrincipales(p);
           return `
           <div class="prod-card">
             <div class="prod-card-img ${fotos.length ? 'has-photo' : ''}">
