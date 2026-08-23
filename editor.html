@@ -153,6 +153,12 @@
   }
   .img-thumb-remove:hover{ background:#c23a3a; }
   #modalImageAddBtn{ margin-bottom:14px; padding:9px 16px; font-size:0.85rem; }
+  .hint-text{ font-size:0.78rem; color:var(--gris); margin:2px 0 12px; line-height:1.4; }
+  .color-photo-block{ border:1px solid #eef1f6; border-radius:10px; padding:12px; margin-bottom:10px; }
+  .color-photo-header{ display:flex; align-items:center; gap:8px; font-weight:700; font-size:0.88rem; color:var(--marino); margin-bottom:8px; }
+  .color-photo-header .mini-dot{ width:14px; height:14px; border-radius:50%; box-shadow:0 0 0 1px #d7dee8; flex-shrink:0; }
+  .color-photo-block .image-gallery{ margin-bottom:8px; }
+  .color-photo-add{ padding:7px 12px; font-size:0.78rem; }
   .color-checks{ display:flex; flex-wrap:wrap; gap:8px; }
   .add-new-row{ display:flex; gap:8px; margin-top:8px; }
   .unify-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
@@ -300,6 +306,12 @@
           <label>Colores disponibles</label>
           <div class="color-checks" id="modalColores"></div>
 
+          <div id="modalColorPhotosSection" style="display:none;">
+            <label>Fotos por color (opcional)</label>
+            <p class="hint-text">Si el cliente elige un color con foto propia acá abajo, esa es la que le va a aparecer. Si no le subís nada a un color, se usan las fotos generales de arriba.</p>
+            <div id="modalColorPhotosList"></div>
+          </div>
+
           <div class="modal-two-col">
             <div><label>Precio (₡)</label><input type="number" id="modalPrecio" min="0"></div>
             <div><label>Stock</label><input type="number" id="modalStock" min="0" step="1"></div>
@@ -348,8 +360,8 @@ const ADMIN_PASSWORD = "moraparts2026";
 /* ==================================================================== */
 
 const COLOR_HEX = {
-  "Negro":"#1b1e24", "Rojo":"#e3352b", "Azul":"#0a66ff", "Naranja":"#ff7a1f",
-  "Blanco":"#f4f5f7", "Gris":"#9aa4b2", "Amarillo":"#f5c400",
+  "Azul":"#0a66ff", "Negro":"#1b1e24", "Rojo":"#e3352b", "Verde":"#16a34a",
+  "Blanco":"#f4f5f7", "Amarillo":"#f5c400", "Gris":"#9aa4b2", "Morado":"#7c3aed",
   "Tornasol":"linear-gradient(135deg, #ff0055, #ff8a00, #ffe600, #00e676, #00c3ff, #7a3cff)",
   "Sin color":"repeating-linear-gradient(45deg, #ffffff, #ffffff 4px, #d8dde5 4px, #d8dde5 8px)"
 };
@@ -583,7 +595,8 @@ document.getElementById('downloadBtn').addEventListener('click', ()=>{
 
 /* ---------- MODAL: crear / editar / eliminar producto ---------- */
 let modalEditId = null;
-let modalImagenes = []; // lista de dataURLs de la galería que se está editando
+let modalImagenes = []; // lista de dataURLs de la galería general que se está editando
+let modalImagenesPorColor = {}; // { "Rojo": [dataURLs], "Azul": [dataURLs] }
 
 const prodModalOverlay = document.getElementById('prodModalOverlay');
 const modalNombre = document.getElementById('modalNombre');
@@ -677,6 +690,79 @@ function renderModalColores(seleccionados){
           }
         });
       }
+      renderModalColorPhotos();
+    });
+  });
+  renderModalColorPhotos();
+}
+
+function cssSafe(s){ return String(s).replace(/[^a-zA-Z0-9]/g, '_'); }
+
+function renderModalColorPhotos(){
+  const seleccionados = Array.from(modalColoresBox.querySelectorAll('input:checked'))
+    .map(i=>i.value)
+    .filter(c => c !== 'Sin color');
+  const section = document.getElementById('modalColorPhotosSection');
+  const list = document.getElementById('modalColorPhotosList');
+
+  if(seleccionados.length < 2){
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+
+  list.innerHTML = seleccionados.map(c => `
+    <div class="color-photo-block">
+      <div class="color-photo-header"><span class="mini-dot" style="background:${COLOR_HEX[c]||'#ccc'}"></span> ${c}</div>
+      <div class="image-gallery" id="colorGallery_${cssSafe(c)}"></div>
+      <button type="button" class="btn btn-outline color-photo-add" data-color="${c}">+ Agregar foto de ${c}</button>
+      <input type="file" accept="image/*" multiple style="display:none;" class="color-photo-input" data-color="${c}" id="colorInput_${cssSafe(c)}">
+    </div>
+  `).join('');
+
+  seleccionados.forEach(c => renderColorGallery(c));
+
+  list.querySelectorAll('.color-photo-add').forEach(btn=>{
+    btn.addEventListener('click', ()=> document.getElementById(`colorInput_${cssSafe(btn.dataset.color)}`).click());
+  });
+  list.querySelectorAll('.color-photo-input').forEach(inp=>{
+    inp.addEventListener('change', async (e)=>{
+      const files = Array.from(e.target.files);
+      e.target.value = '';
+      if(!files.length) return;
+      const color = inp.dataset.color;
+      if(!modalImagenesPorColor[color]) modalImagenesPorColor[color] = [];
+      try{
+        for(const file of files){
+          const dataUrl = await resizeImageFile(file);
+          modalImagenesPorColor[color].push(dataUrl);
+        }
+        renderColorGallery(color);
+      } catch(err){
+        alert('No se pudo procesar una de las imágenes: ' + err.message);
+      }
+    });
+  });
+}
+
+function renderColorGallery(color){
+  const box = document.getElementById(`colorGallery_${cssSafe(color)}`);
+  if(!box) return;
+  const fotos = modalImagenesPorColor[color] || [];
+  if(fotos.length === 0){
+    box.innerHTML = `<span class="image-gallery-empty">Sin foto propia — se usan las fotos generales.</span>`;
+    return;
+  }
+  box.innerHTML = fotos.map((src, i)=>`
+    <div class="img-thumb">
+      <img src="${src}">
+      <button type="button" class="img-thumb-remove" data-color="${color}" data-i="${i}" aria-label="Quitar foto">×</button>
+    </div>
+  `).join('');
+  box.querySelectorAll('.img-thumb-remove').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      modalImagenesPorColor[btn.dataset.color].splice(Number(btn.dataset.i), 1);
+      renderColorGallery(btn.dataset.color);
     });
   });
 }
@@ -723,6 +809,7 @@ function openProductModal(id){
   modalPrecio.value = p ? p.precio : '';
   modalStock.value = p ? p.stock : '';
   modalImagenes = (p && p.imagenes) ? [...p.imagenes] : [];
+  modalImagenesPorColor = (p && p.imagenesPorColor) ? JSON.parse(JSON.stringify(p.imagenesPorColor)) : {};
 
   renderModalColores(p && p.colores ? p.colores : []);
   renderModalGallery();
@@ -734,6 +821,7 @@ function closeProductModal(){
   prodModalOverlay.classList.remove('show');
   modalEditId = null;
   modalImagenes = [];
+  modalImagenesPorColor = {};
 }
 
 document.getElementById('newProductBtn').addEventListener('click', ()=> openProductModal(null));
@@ -784,6 +872,9 @@ document.getElementById('modalSaveBtn').addEventListener('click', ()=>{
     p.nombre = nombre; p.marca = marca; p.categoria = categoria; p.motos = motos;
     p.precio = precio; p.stock = stock; p.colores = colores;
     if(modalImagenes.length){ p.imagenes = [...modalImagenes]; } else { delete p.imagenes; }
+    const porColorFinal = {};
+    colores.forEach(c=>{ if(modalImagenesPorColor[c] && modalImagenesPorColor[c].length){ porColorFinal[c] = modalImagenesPorColor[c]; } });
+    if(Object.keys(porColorFinal).length){ p.imagenesPorColor = porColorFinal; } else { delete p.imagenesPorColor; }
   } else {
     const newId = productos.length ? Math.max(...productos.map(p=>p.id)) + 1 : 1;
     const nuevo = {
@@ -792,6 +883,9 @@ document.getElementById('modalSaveBtn').addEventListener('click', ()=>{
       precio, stock
     };
     if(modalImagenes.length) nuevo.imagenes = [...modalImagenes];
+    const porColorFinal = {};
+    colores.forEach(c=>{ if(modalImagenesPorColor[c] && modalImagenesPorColor[c].length){ porColorFinal[c] = modalImagenesPorColor[c]; } });
+    if(Object.keys(porColorFinal).length) nuevo.imagenesPorColor = porColorFinal;
     productos.push(nuevo);
   }
 
