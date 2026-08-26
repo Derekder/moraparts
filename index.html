@@ -2943,8 +2943,8 @@ productos.forEach(p => { if(p.marca) marcaCounts[p.marca] = (marcaCounts[p.marca
 const marcas = Array.from(new Set(productos.map(p=>p.marca).filter(Boolean))).sort((a,b)=> marcaCounts[b]-marcaCounts[a]);
 
 const categoriaCounts = {};
-productos.forEach(p => { if(p.categoria) categoriaCounts[p.categoria] = (categoriaCounts[p.categoria]||0) + 1; });
-const categoriasFiltro = Array.from(new Set(productos.map(p=>p.categoria).filter(Boolean))).sort((a,b)=> categoriaCounts[b]-categoriaCounts[a]);
+productos.forEach(p => catsDe(p).forEach(c => { categoriaCounts[c] = (categoriaCounts[c]||0) + 1; }));
+const categoriasFiltro = Array.from(new Set(productos.flatMap(p=>catsDe(p)))).sort((a,b)=> categoriaCounts[b]-categoriaCounts[a]);
 
 // Contador de confianza: números reales que cuentan al entrar en pantalla
 document.getElementById('statProductos').dataset.target = productos.length;
@@ -3000,6 +3000,7 @@ productos.forEach(p=>{
 
 function money(n){ return "₡" + n.toLocaleString('es-CR'); }
 function normalize(s){ return (s||"").toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function catsDe(p){ return (p.categorias && p.categorias.length) ? p.categorias : (p.categoria ? [p.categoria] : ['Sin categoría']); }
 
 // Si el producto tiene fotos específicas para el color elegido, las usa.
 // Si no, cae en las fotos generales del producto.
@@ -3141,15 +3142,15 @@ function renderCatalog(){
     visibles = visibles.filter(p => p.marca === filtroMarca);
   }
   if(filtroCategoria){
-    visibles = visibles.filter(p => p.categoria === filtroCategoria);
+    visibles = visibles.filter(p => catsDe(p).includes(filtroCategoria));
   }
 
   if(searchQuery){
     const q = normalize(searchQuery);
-    visibles = visibles.filter(p => normalize(`${p.nombre} ${p.categoria} ${(p.motos||[]).join(' ')} ${(p.colores||[]).join(' ')} ${p.marca||''}`).includes(q));
+    visibles = visibles.filter(p => normalize(`${p.nombre} ${catsDe(p).join(' ')} ${(p.motos||[]).join(' ')} ${(p.colores||[]).join(' ')} ${p.marca||''}`).includes(q));
   }
 
-  const categorias = Array.from(new Set(visibles.map(p=>p.categoria)));
+  const categorias = Array.from(new Set(visibles.flatMap(p=>catsDe(p))));
 
   if(categorias.length===0){
     resultsCountEl.textContent = '';
@@ -3163,7 +3164,7 @@ function renderCatalog(){
   resultsCountEl.textContent = `${visibles.length} producto${visibles.length===1?'':'s'} encontrado${visibles.length===1?'':'s'}`;
 
   cont.innerHTML = categorias.map(cat=>{
-    const items = visibles.filter(p=>p.categoria===cat);
+    const items = visibles.filter(p=>catsDe(p).includes(cat));
     return `
     <div class="cat-group">
       <div class="cat-title">${cat}</div>
