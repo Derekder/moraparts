@@ -3331,7 +3331,7 @@ function renderCart(){
   }
   box.innerHTML = cart.map(i=>`
     <div class="cart-item">
-      <div class="cart-item-icon">${(i.imagenes && i.imagenes.length) ? `<img src="${i.imagenes[0]}" alt="${i.nombre}">` : i.icono}</div>
+      <div class="cart-item-icon">${(() => { const f = fotosParaColor(i, i.color); return f.length ? `<img src="${f[0]}" alt="${i.nombre}">` : i.icono; })()}</div>
       <div class="cart-item-info">
         <div class="cart-item-name">${i.nombre} — ${(i.motos||[]).join(', ')}</div>
         <div class="cart-item-meta">${i.color ? 'Color: '+i.color : ''}</div>
