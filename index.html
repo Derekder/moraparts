@@ -558,12 +558,11 @@
 <section class="hero" id="inicio">
   <div class="hero-inner">
     <div>
-      <div class="eyebrow">Repuestos · Accesorios · Entrega coordinada por WhatsApp</div>
+      <div class="eyebrow">Repuestos · Accesorios</div>
       <h1>Todo para tu moto,<br><em>en un solo lugar.</em></h1>
       <p>Accesorios, repuestos y mucho más — consultanos si no encontrás lo que buscás. Armá tu pedido en el catálogo y coordinamos todo por WhatsApp.</p>
       <div class="hero-ctas">
         <a href="#catalogo" class="btn btn-primary btn-glow">Ver catálogo</a>
-        <a href="https://wa.me/50661284130" target="_blank" rel="noopener" class="btn btn-outline">Escribir por WhatsApp</a>
       </div>
     </div>
     <div class="hero-visual">
@@ -642,8 +641,6 @@
   <div class="filters-row" id="filters">
     <button type="button" class="filter-chip active" id="todosBtn">Todos</button>
 
-    <div id="quickChips" class="quick-chips"></div>
-
     <div class="filter-dropdown" id="motoDropdown">
       <button type="button" class="filter-dd-btn" id="motoDropdownBtn">
         <span id="motoDropdownLabel">Tipos de moto</span>
@@ -652,6 +649,17 @@
       <div class="filter-dd-menu" id="motoDropdownMenu">
         <input type="text" class="dd-search" id="motoDdSearch" placeholder="Buscar modelo...">
         <div class="dd-items" id="motoDropdownItems"></div>
+      </div>
+    </div>
+
+    <div class="filter-dropdown" id="categoriaDropdown">
+      <button type="button" class="filter-dd-btn" id="categoriaDropdownBtn">
+        <span id="categoriaDropdownLabel">Categorías</span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div class="filter-dd-menu" id="categoriaDropdownMenu">
+        <input type="text" class="dd-search" id="categoriaDdSearch" placeholder="Buscar categoría...">
+        <div class="dd-items" id="categoriaDropdownItems"></div>
       </div>
     </div>
 
@@ -2923,7 +2931,7 @@ window.addEventListener('scroll', ()=>{
   backToTop.classList.toggle('show', window.scrollY > 500);
 });
 backToTop.addEventListener('click', ()=>{
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.getElementById('catalogo').scrollIntoView({ behavior: 'smooth' });
 });
 
 const motoCounts = {};
@@ -2933,6 +2941,10 @@ const motos = Array.from(new Set(productos.flatMap(p=>p.motos))).sort((a,b)=> mo
 const marcaCounts = {};
 productos.forEach(p => { if(p.marca) marcaCounts[p.marca] = (marcaCounts[p.marca]||0) + 1; });
 const marcas = Array.from(new Set(productos.map(p=>p.marca).filter(Boolean))).sort((a,b)=> marcaCounts[b]-marcaCounts[a]);
+
+const categoriaCounts = {};
+productos.forEach(p => { if(p.categoria) categoriaCounts[p.categoria] = (categoriaCounts[p.categoria]||0) + 1; });
+const categoriasFiltro = Array.from(new Set(productos.map(p=>p.categoria).filter(Boolean))).sort((a,b)=> categoriaCounts[b]-categoriaCounts[a]);
 
 // Contador de confianza: números reales que cuentan al entrar en pantalla
 document.getElementById('statProductos').dataset.target = productos.length;
@@ -2975,6 +2987,7 @@ const cardObserver = new IntersectionObserver((entries)=>{
 
 let filtroActivo = "Todos";
 let filtroMarca = null;
+let filtroCategoria = null;
 let searchQuery = "";
 let cart = [];
 
@@ -3000,8 +3013,7 @@ function cartKey(id, color){ return `${id}::${color || '-'}`; }
 
 let motoDdQuery = "";
 let marcaDdQuery = "";
-const QUICK_CHIPS_N = 3;
-const chipsRapidas = motos.slice(0, QUICK_CHIPS_N);
+let categoriaDdQuery = "";
 
 function renderFilters(){
   const motoBtn = document.getElementById('motoDropdownBtn');
@@ -3010,23 +3022,12 @@ function renderFilters(){
   const marcaBtn = document.getElementById('marcaDropdownBtn');
   const marcaLabel = document.getElementById('marcaDropdownLabel');
   const marcaItems = document.getElementById('marcaDropdownItems');
+  const categoriaBtn = document.getElementById('categoriaDropdownBtn');
+  const categoriaLabel = document.getElementById('categoriaDropdownLabel');
+  const categoriaItems = document.getElementById('categoriaDropdownItems');
   const todosBtn = document.getElementById('todosBtn');
-  const quickChipsBox = document.getElementById('quickChips');
 
-  todosBtn.classList.toggle('active', filtroActivo==="Todos" && !filtroMarca);
-
-  // Chips rápidos con las motos que más productos tienen
-  quickChipsBox.innerHTML = chipsRapidas.map(m => `
-    <button type="button" class="quick-chip ${m===filtroActivo?'active':''}" data-moto="${m}">
-      ${m} <span class="qc-count">${motoCounts[m]}</span>
-    </button>
-  `).join('');
-  quickChipsBox.querySelectorAll('.quick-chip').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      filtroActivo = btn.dataset.moto;
-      renderFilters(); renderCatalog();
-    });
-  });
+  todosBtn.classList.toggle('active', filtroActivo==="Todos" && !filtroMarca && !filtroCategoria);
 
   // Desplegable "Tipos de moto"
   motoLabel.textContent = filtroActivo==="Todos" ? "Tipos de moto" : filtroActivo;
@@ -3041,6 +3042,24 @@ function renderFilters(){
     btn.addEventListener('click', ()=>{
       filtroActivo = btn.dataset.moto;
       document.getElementById('motoDropdown').classList.remove('open');
+      renderFilters(); renderCatalog();
+    });
+  });
+
+  // Desplegable "Categorías"
+  categoriaLabel.textContent = filtroCategoria || "Categorías";
+  categoriaBtn.classList.toggle('has-value', !!filtroCategoria);
+  document.getElementById('categoriaDropdown').style.display = categoriasFiltro.length ? '' : 'none';
+  const categoriasFiltradas = categoriasFiltro.filter(c => normalize(c).includes(normalize(categoriaDdQuery)));
+  categoriaItems.innerHTML = categoriasFiltradas.length ? categoriasFiltradas.map(c => `
+    <button type="button" class="filter-dd-item ${c===filtroCategoria?'active':''}" data-categoria="${c}">
+      <span>${c}</span><span class="dd-count">${categoriaCounts[c]}</span>
+    </button>
+  `).join('') : `<div class="dd-empty">No se encontró ninguna categoría.</div>`;
+  categoriaItems.querySelectorAll('.filter-dd-item').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      filtroCategoria = btn.dataset.categoria;
+      document.getElementById('categoriaDropdown').classList.remove('open');
       renderFilters(); renderCatalog();
     });
   });
@@ -3072,6 +3091,10 @@ document.getElementById('marcaDdSearch').addEventListener('input', (e)=>{
   marcaDdQuery = e.target.value;
   renderFilters();
 });
+document.getElementById('categoriaDdSearch').addEventListener('input', (e)=>{
+  categoriaDdQuery = e.target.value;
+  renderFilters();
+});
 document.querySelectorAll('.dd-search').forEach(inp=>{
   inp.addEventListener('click', e=> e.stopPropagation());
 });
@@ -3079,24 +3102,35 @@ document.querySelectorAll('.dd-search').forEach(inp=>{
 document.getElementById('todosBtn').addEventListener('click', ()=>{
   filtroActivo = "Todos";
   filtroMarca = null;
+  filtroCategoria = null;
   document.getElementById('motoDropdown').classList.remove('open');
   document.getElementById('marcaDropdown').classList.remove('open');
+  document.getElementById('categoriaDropdown').classList.remove('open');
   renderFilters(); renderCatalog();
 });
 
 document.getElementById('motoDropdownBtn').addEventListener('click', (e)=>{
   e.stopPropagation();
   document.getElementById('marcaDropdown').classList.remove('open');
+  document.getElementById('categoriaDropdown').classList.remove('open');
   document.getElementById('motoDropdown').classList.toggle('open');
+});
+document.getElementById('categoriaDropdownBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  document.getElementById('motoDropdown').classList.remove('open');
+  document.getElementById('marcaDropdown').classList.remove('open');
+  document.getElementById('categoriaDropdown').classList.toggle('open');
 });
 document.getElementById('marcaDropdownBtn').addEventListener('click', (e)=>{
   e.stopPropagation();
   document.getElementById('motoDropdown').classList.remove('open');
+  document.getElementById('categoriaDropdown').classList.remove('open');
   document.getElementById('marcaDropdown').classList.toggle('open');
 });
 document.addEventListener('click', ()=>{
   document.getElementById('motoDropdown').classList.remove('open');
   document.getElementById('marcaDropdown').classList.remove('open');
+  document.getElementById('categoriaDropdown').classList.remove('open');
 });
 
 function renderCatalog(){
@@ -3105,6 +3139,9 @@ function renderCatalog(){
   let visibles = productos.filter(p => filtroActivo==="Todos" || (p.motos && p.motos.includes(filtroActivo)));
   if(filtroMarca){
     visibles = visibles.filter(p => p.marca === filtroMarca);
+  }
+  if(filtroCategoria){
+    visibles = visibles.filter(p => p.categoria === filtroCategoria);
   }
 
   if(searchQuery){
