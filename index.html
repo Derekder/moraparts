@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mora Part's CR — Repuestos y Accesorios para Moto</title>
 <meta name="description" content="Repuestos y accesorios para moto en Costa Rica. Envíos a todo el país. Coordinamos tu pedido directo por WhatsApp.">
@@ -2952,13 +2955,18 @@ let proyectoActual = 0;
 let proyectosTimer = null;
 let proyectosPausadoHasta = 0;
 
-function irAProyecto(i){
+function irAProyecto(i, comportamiento){
   const slide = proyectosTrack.children[i];
   if(!slide) return;
-  proyectosTrack.scrollTo({ left: slide.offsetLeft - (proyectosTrack.clientWidth - slide.clientWidth)/2, behavior:'smooth' });
+  const maxScroll = proyectosTrack.scrollWidth - proyectosTrack.clientWidth;
+  let destino = slide.offsetLeft - (proyectosTrack.clientWidth - slide.clientWidth)/2;
+  destino = Math.max(0, Math.min(destino, maxScroll));
+  proyectosTrack.scrollTo({ left: destino, behavior: comportamiento || 'smooth' });
+  proyectoActual = i;
+  proyectosDotsBox.querySelectorAll('span').forEach((d, idx)=> d.classList.toggle('active', idx===i));
 }
 
-function actualizarDotsProyectos(){
+function detectarSlideVisible(){
   const centro = proyectosTrack.scrollLeft + proyectosTrack.clientWidth/2;
   let masCercano = 0, menorDist = Infinity;
   Array.from(proyectosTrack.children).forEach((slide, i)=>{
@@ -2976,21 +2984,27 @@ proyectosDotsBox.querySelectorAll('span').forEach(dot=>{
   });
 });
 
+// Solo usamos el scroll manual (toque/arrastre del usuario) para sincronizar los puntitos,
+// nunca para decidir el siguiente paso del autoplay (así nunca se "traba").
 let scrollTicking = false;
+let scrollEsManual = true;
 proyectosTrack.addEventListener('scroll', ()=>{
-  if(!scrollTicking){ requestAnimationFrame(()=>{ actualizarDotsProyectos(); scrollTicking = false; }); scrollTicking = true; }
+  if(!scrollEsManual) return;
+  if(!scrollTicking){ requestAnimationFrame(()=>{ detectarSlideVisible(); scrollTicking = false; }); scrollTicking = true; }
 });
 ['touchstart','pointerdown','wheel'].forEach(evt=>{
-  proyectosTrack.addEventListener(evt, ()=>{ proyectosPausadoHasta = Date.now() + 6000; }, { passive:true });
+  proyectosTrack.addEventListener(evt, ()=>{ proyectosPausadoHasta = Date.now() + 6000; scrollEsManual = true; }, { passive:true });
 });
 
 proyectosTimer = setInterval(()=>{
   if(Date.now() < proyectosPausadoHasta) return;
+  scrollEsManual = false;
   const siguiente = (proyectoActual + 1) % proyectosFotos.length;
   irAProyecto(siguiente);
-}, 1800);
+  setTimeout(()=>{ scrollEsManual = true; }, 700);
+}, 2200);
 
-actualizarDotsProyectos();
+detectarSlideVisible();
 
 
 // Ajusta la posición de la barra pegajosa según la altura real del header
