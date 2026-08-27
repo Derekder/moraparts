@@ -186,6 +186,29 @@
 
   /* Cómo comprar */
   .how-to{ background:#fff; padding:56px 20px; }
+
+  /* Carrusel de proyectos */
+  .proyectos{ background: var(--marino); padding: 56px 20px 44px; }
+  .proyectos .eyebrow{ text-align:center; }
+  .proyectos .section-head h2{ color:#fff; text-align:center; }
+  .proyectos-carrusel-wrap{ max-width:1200px; margin:32px auto 0; overflow:hidden; }
+  .proyectos-track{
+    display:flex; gap:18px; overflow-x:auto; scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch; padding:4px 4px 12px;
+    scrollbar-width:none;
+  }
+  .proyectos-track::-webkit-scrollbar{ display:none; }
+  .proyecto-slide{
+    flex:0 0 auto; width:min(78vw, 340px); scroll-snap-align:center;
+    border-radius:14px; overflow:hidden; background:#0000; position:relative;
+    box-shadow: 0 18px 40px -14px rgba(0,0,0,0.5);
+  }
+  .proyecto-slide img{ width:100%; height:420px; object-fit:cover; display:block; }
+  .proyectos-dots{ display:flex; justify-content:center; gap:8px; margin-top:18px; }
+  .proyectos-dots span{ width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.25); transition: background .2s, transform .2s; cursor:pointer; }
+  .proyectos-dots span.active{ background: var(--naranja); transform: scale(1.25); }
+  @media (max-width:700px){ .proyecto-slide img{ height:340px; } }
+
   .how-to-inner{ max-width:1100px; margin:0 auto; }
   .how-to-steps{ display:grid; grid-template-columns:repeat(3,1fr); gap:28px; margin-top:36px; position:relative; }
   @media (max-width:820px){ .how-to-steps{ grid-template-columns:1fr; gap:32px; } }
@@ -618,6 +641,18 @@
       </div>
     </div>
   </div>
+</section>
+<div class="stripe-divider"></div>
+
+<section class="proyectos">
+  <div class="section-head">
+    <div class="eyebrow">Casos reales</div>
+    <h2>Motos que ya rodaron con piezas Mora Part's CR</h2>
+  </div>
+  <div class="proyectos-carrusel-wrap">
+    <div class="proyectos-track" id="proyectosTrack"></div>
+  </div>
+  <div class="proyectos-dots" id="proyectosDots"></div>
 </section>
 <div class="stripe-divider"></div>
 
@@ -2902,6 +2937,61 @@ const WHATSAPP_NUMERO = "50661284130"; // 506 + tu número, sin espacios ni guio
 /* ========== fin de la zona editable ========== */
 
 document.getElementById('year').textContent = new Date().getFullYear();
+
+// Carrusel de proyectos ("motos que ya rodaron con piezas...")
+const proyectosFotos = ["img/proyecto-1.jpg","img/proyecto-2.jpg","img/proyecto-3.jpg","img/proyecto-4.jpg","img/proyecto-5.jpg","img/proyecto-6.jpg","img/proyecto-7.jpg","img/proyecto-8.jpg"];
+const proyectosTrack = document.getElementById('proyectosTrack');
+const proyectosDotsBox = document.getElementById('proyectosDots');
+
+proyectosTrack.innerHTML = proyectosFotos.map((src, i)=>`
+  <div class="proyecto-slide" data-i="${i}"><img src="${src}" alt="Moto con piezas Mora Part's CR" loading="lazy" decoding="async"></div>
+`).join('');
+proyectosDotsBox.innerHTML = proyectosFotos.map((_, i)=>`<span data-i="${i}"></span>`).join('');
+
+let proyectoActual = 0;
+let proyectosTimer = null;
+let proyectosPausadoHasta = 0;
+
+function irAProyecto(i){
+  const slide = proyectosTrack.children[i];
+  if(!slide) return;
+  proyectosTrack.scrollTo({ left: slide.offsetLeft - (proyectosTrack.clientWidth - slide.clientWidth)/2, behavior:'smooth' });
+}
+
+function actualizarDotsProyectos(){
+  const centro = proyectosTrack.scrollLeft + proyectosTrack.clientWidth/2;
+  let masCercano = 0, menorDist = Infinity;
+  Array.from(proyectosTrack.children).forEach((slide, i)=>{
+    const dist = Math.abs((slide.offsetLeft + slide.clientWidth/2) - centro);
+    if(dist < menorDist){ menorDist = dist; masCercano = i; }
+  });
+  proyectoActual = masCercano;
+  proyectosDotsBox.querySelectorAll('span').forEach((d,i)=> d.classList.toggle('active', i===masCercano));
+}
+
+proyectosDotsBox.querySelectorAll('span').forEach(dot=>{
+  dot.addEventListener('click', ()=>{
+    proyectosPausadoHasta = Date.now() + 6000;
+    irAProyecto(Number(dot.dataset.i));
+  });
+});
+
+let scrollTicking = false;
+proyectosTrack.addEventListener('scroll', ()=>{
+  if(!scrollTicking){ requestAnimationFrame(()=>{ actualizarDotsProyectos(); scrollTicking = false; }); scrollTicking = true; }
+});
+['touchstart','pointerdown','wheel'].forEach(evt=>{
+  proyectosTrack.addEventListener(evt, ()=>{ proyectosPausadoHasta = Date.now() + 6000; }, { passive:true });
+});
+
+proyectosTimer = setInterval(()=>{
+  if(Date.now() < proyectosPausadoHasta) return;
+  const siguiente = (proyectoActual + 1) % proyectosFotos.length;
+  irAProyecto(siguiente);
+}, 3500);
+
+actualizarDotsProyectos();
+
 
 // Ajusta la posición de la barra pegajosa según la altura real del header
 function updateHeaderHeight(){
