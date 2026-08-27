@@ -3151,7 +3151,7 @@ function renderCatalog(){
     visibles = visibles.filter(p => normalize(`${p.nombre} ${catsDe(p).join(' ')} ${(p.motos||[]).join(' ')} ${(p.colores||[]).join(' ')} ${p.marca||''}`).includes(q));
   }
 
-  const categorias = Array.from(new Set(visibles.flatMap(p=>catsDe(p))));
+  const categorias = filtroCategoria ? [filtroCategoria] : Array.from(new Set(visibles.flatMap(p=>catsDe(p))));
 
   if(categorias.length===0){
     resultsCountEl.textContent = '';
